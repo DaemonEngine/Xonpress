@@ -18,8 +18,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+require_once("table.php");
 
-class XonPress_UDP 
+/**
+ * \brief Basic connection to darkplaces
+ */
+class DarkPlaces_Connection
 {
 	protected $dpheader = "\xff\xff\xff\xff";
 	protected $dpresponses = array(
@@ -48,8 +52,8 @@ class XonPress_UDP
 			$this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
 			if ( $this->socket ) {
 				socket_bind($this->socket, $this->host);
-				// default timeout = 1, 30 millisecond
-				$this->socket_timeout(1000,30000);
+				// default timeout = 1, 40 millisecond
+				$this->socket_timeout(1000,40000);
 			}
 		}
 		return $this->socket;
@@ -126,4 +130,91 @@ class XonPress_UDP
 		
 		return $result;
 	}
+}
+
+/**
+ * \brief Static access to darkplaces servers and caches results
+ */
+class DarkPlaces_Singleton
+{
+	private $connections = array();
+	
+	protected function __construct() {}
+	protected function __clone() {}
+	
+	static function instance()
+	{
+		static $instance = null;
+		if ( !$instance ) 
+			$instance = new DarkPlaces_Singleton();
+		return $instance;
+	}
+	
+	// "Factory" that ensures a single instance for each server (per page load)
+	protected function get_connection($host, $port)
+	{
+		$server = "$host:$port";
+		if (isset($this->connections[$server]))
+			return $this->connections[$server];
+		return $this->connections[$server] = new DarkPlaces_Connection($host,$port);
+	}
+	
+	function status($host="127.0.0.1", $port=26000)
+	{
+		$conn = $this->get_connection($host,$port);
+		if ( !empty($conn->cached_status) )
+			return $conn->cached_status;
+		return $conn->cached_status = $conn->status();
+	}
+	
+	function status_html($host = "127.0.0.1", $port = 26000, 
+		$public_host = null, $css_prefix="dptable_")
+	{
+		$status = $this->status($host, $port);
+		
+		if ( empty($public_host) ) $public_host = $host;
+
+		$html = "";
+		$status_table = new HTML_Table("{$css_prefix}status");
+
+		$status_table->simple_row("Server","$public_host:$port");
+
+		if ( $status["error"] )
+		{
+			$status_table->simple_row("Error", 
+				"<span class='{$css_prefix}error'>Could not retrieve server info</span>", 
+				false);
+			$html .= $status_table;
+		}
+		else
+		{
+			$status_table->simple_row("Name", $status["hostname"]);
+			$status_table->simple_row("Map", $status["mapname"]);
+			$status_table->simple_row("Players", 
+				"{$status['clients']}/{$status['sv_maxclients']} ({$status['bots']} bots)");
+
+			$html .= $status_table;
+
+			if (!empty($status["players"]))
+			{
+				$players = new HTML_Table('xonpress_players');
+				$players->header_row(array("Name", "Score", "Ping"));
+
+				foreach ( $status["players"] as $player )
+					$players->data_row( array (
+						$player->name,
+						$player->score == -666 ? "spectator" : $player->score,
+						$player->ping,
+					));
+				$html .= $players;
+			}
+		}
+		
+		return $html;
+	}
+}
+
+function DarkPlaces()
+{
+	return DarkPlaces_Singleton::instance();
 }
