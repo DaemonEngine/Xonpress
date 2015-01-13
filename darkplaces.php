@@ -188,7 +188,8 @@ class DarkPlaces_Singleton
 		}
 		else
 		{
-			$status_table->simple_row("Name", $status["hostname"]);
+			$status_table->simple_row("Name", 
+				DarkPlacesStringConverter::string_dp2none($status["hostname"]));
 			$status_table->simple_row("Map", $status["mapname"]);
 			$status_table->simple_row("Players", 
 				"{$status['clients']}/{$status['sv_maxclients']} ({$status['bots']} bots)");
@@ -202,17 +203,176 @@ class DarkPlaces_Singleton
 
 				foreach ( $status["players"] as $player )
 					$players->data_row( array (
-						$player->name,
+						DarkPlacesStringConverter::string_dp2html($player->name),
 						$player->score == -666 ? "spectator" : $player->score,
 						$player->ping,
-					));
+					), false );
 				$html .= $players;
 			}
 		}
 		
 		return $html;
 	}
+	
+	
+	
 }
+
+
+
+// DarkPlaces to HTML functor
+class DarkPlacesStringConverter
+{	
+	private $open = false;
+	
+	function html_close() 
+	{
+		if ( $this->open )
+		{
+			$this->open = false;
+			return "</span>";
+		}
+	}
+	
+	function __invoke($matches="") 
+	{
+		if (!empty($matches[2]))
+		{
+			$this->open = true;
+			return "<span style='color: #".$this->color_from_dp($matches[2]).";'>";
+		}
+		
+		if (!empty($matches[1]))
+			$text = "^";
+		else if (is_array($matches))
+			$text = $matches[0];
+		else
+			$text = $matches;
+		
+		return htmlspecialchars($text) . $this->html_close();
+	}
+	
+	/**
+	 * \brief Create a color from a DP ^string
+	 */
+	function color_from_dp($color)
+	{
+		if ( strlen($color) == 2 && ($code = (int)$color[1]) <= 9 ) // ^N
+		{
+			switch ( $code )
+			{
+				case 0: return '000';
+				case 1: return 'f00';
+				case 2: return '0f0';
+				case 3: return 'ff0';
+				case 4: return '00f';
+				case 5: return '0ff';
+				case 6: return 'f0f';
+				case 7: return 'fff';
+				case 8: return '888';
+				case 9: return 'ccc';
+			}
+		}
+		else if ( strlen($color) == 5 ) // ^xNNN
+			return substr($color,2);
+		return "";
+	}
+	
+    //                              1      2                                   3
+	static private $color_regex = "/(\^\^)|((?:\^[0-9])|(?:\^x[0-9a-fA-F]{3}))|([^^]*(?:^$)?)/";
+	
+	/**
+	 * \brief Strip colors from a DP colored string
+	 */
+	static function string_dp2none($string)
+	{
+		return preg_replace_callback(self::$color_regex,
+			function ($matches)
+			{
+				if ( $matches[0] == "^^" )
+					return "^";
+				else if ( !empty($matches[3]) )
+					return $matches[3];
+				return "";
+			}
+			,self::string_dp_convert($string));
+	}
+	
+	/**
+	 * \brief Convert a colored DP string to a colored HTML string
+	 */
+	static function string_dp2html($string)
+	{
+		$functor = new DarkPlacesStringConverter();
+		
+		return preg_replace_callback(self::$color_regex,$functor,
+			self::string_dp_convert($string)).$functor->html_close();
+	}
+	
+	static private $qfont_table = array(
+	'',   ' ',  '-',  ' ',  '_',  '#',  '+',  '·',  'F',  'T',  ' ',  '#',  '·',  '<',  '#',  '#', // 0
+	'[',  ']',  ':)', ':)', ':(', ':P', ':/', ':D', '«',  '»',  '·',  '-',  '#',  '-',  '-',  '-', // 1
+	'?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 2 
+	'?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 3
+	'?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 4
+	'?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 5
+	'?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 6
+	'?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 7
+	'=',  '=',  '=',  '#',  '¡',  '[o]','[u]','[i]','[c]','[c]','[r]','#',  '¿',  '>',  '#',  '#', // 8
+	'[',  ']',  ':)', ':)', ':(', ':P', ':/', ':D', '«',  '»',  '#',  'X',  '#',  '-',  '-',  '-', // 9
+	' ',  '!',  '"',  '#',  '$',  '%',  '&',  '\'', '(',  ')',  '*',  '+',  ',',  '-',  '.',  '/', // 10
+	'0',  '1',  '2',  '3',  '4',  '5',  '6',  '7', '8',  '9',  ':',  ';',  '<',  '=',  '>',  '?',  // 11
+	'@',  'A',  'B',  'C',  'D',  'E',  'F',  'G', 'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  // 12
+	'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W', 'X',  'Y',  'Z',  '[',  '\\', ']',  '^',  '_',  // 13
+	'.',  'A',  'B',  'C',  'D',  'E',  'F',  'G', 'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  // 14
+	'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W', 'X',  'Y',  'Z',  '{',  '|',  '}',  '~',  '<'   // 15
+	);
+	
+	/**
+	 * \brief Convert special DP characters to Unicode
+	 * \note Supports for up to 3 byte long UTF-8 characters
+	 */
+	static function string_dp_convert($string)
+	{
+		$out = "";
+		
+		$unicode = array();        
+		$v = array();
+		
+		for ($i = 0; $i < strlen( $string ); $i++ ) 
+		{
+			$c = $string[$i];
+			$o = ord($c);
+			
+			if ( $o < 128 ) 
+				$out .= $c;
+			else 
+			{
+			
+				if ( count($v) == 0 )
+				{
+					$s = "";
+					$length = ( $o < 224 ) ? 2 : 3;
+				}
+				
+				$v[] = $o;
+				$s .= $c;
+				
+				if ( count( $v ) == $length ) 
+				{
+					$unicode = ( $length == 3 ) ?
+						( ( $v[0] % 16 ) << 12 ) + ( ( $v[1] % 64 ) << 6 ) + ( $v[2] % 64 ):
+						( ( $v[0] % 32 ) << 6 ) + ( $v[1] % 64 );
+					$out .= ( ($unicode & 0xFF00) == 0xE000 ) ? self::$qfont_table[$unicode&0xff] : $s;
+					
+					$v = array();
+				}
+			} 
+		}
+		return $out;
+	}
+}
+
 
 function DarkPlaces()
 {
