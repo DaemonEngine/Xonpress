@@ -248,11 +248,24 @@ class Color_12bit
 		return (0.3*$this->r + 0.59*$this->g + 0.11*$this->b) / 15;
 	}
 	
+	/**
+	 * \brief Multiply by a [0,1] value
+	 */
 	function multiply($value)
 	{
 		$this->r = (int)($this->r*$value);
 		$this->g = (int)($this->g*$value);
 		$this->b = (int)($this->b*$value);
+	}
+	
+	/**
+	 * \brief Add a [0,1] value
+	 */
+	function add($value)
+	{
+		$this->r = (int)max($this->r+$value*15,15);
+		$this->g = (int)max($this->g+$value*15,15);
+		$this->b = (int)max($this->b+$value*15,15);
 	}
 	
 	/**
@@ -299,6 +312,8 @@ class Color_12bit
 class DarkPlacesStringConverter
 {	
 	private $open = false;
+	public $min_luma = 0;
+	public $max_luma = 0.8;
 	
 	function html_close() 
 	{
@@ -320,8 +335,10 @@ class DarkPlacesStringConverter
 			$color = Color_12bit::decode_dp($matches[2]);
 			
 			$luma = $color->luma();
-			if ( $luma > 0.8 )
-				$color->multiply(0.8);
+			if ( $luma > $this->max_luma )
+				$color->multiply($this->max_luma);
+			else if ( $luma < $this->min_luma )
+				$color->add($this->min_luma);
 			
 			return "$close<span style='color: $color;'>";
 		}
