@@ -36,10 +36,11 @@ function xonpress_showstatus( $attributes )
 		'ip'   => '127.0.0.1',
 		'port' => 26000,
 		'public_host' => '',
+		'stats_url' => '',
 	), $attributes );
 
-	return DarkPlaces()->status_html($attributes["ip"],$attributes["port"],
-		$attributes['public_host']);
+	return DarkPlaces()->status_html( $attributes["ip"], $attributes["port"],
+		$attributes['public_host'], $attributes['stats_url'] );
 }
 
 if ( !function_exists('add_shortcode') )

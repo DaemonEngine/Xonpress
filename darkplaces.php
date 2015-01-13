@@ -168,7 +168,7 @@ class DarkPlaces_Singleton
 	}
 	
 	function status_html($host = "127.0.0.1", $port = 26000, 
-		$public_host = null, $css_prefix="dptable_")
+		$public_host = null, $stats_url = null, $css_prefix="dptable_")
 	{
 		$status = $this->status($host, $port);
 		
@@ -177,19 +177,25 @@ class DarkPlaces_Singleton
 		$html = "";
 		$status_table = new HTML_Table("{$css_prefix}status");
 
-		$status_table->simple_row("Server","$public_host:$port");
 
 		if ( $status["error"] )
 		{
+			$status_table->simple_row("Server","$public_host:$port");
 			$status_table->simple_row("Error", 
 				"<span class='{$css_prefix}error'>Could not retrieve server info</span>", 
 				false);
+			if ( $stats_url )
+				$status_table->simple_row("Stats","<a href='$stats_url'>$stats_url</a>");
 			$html .= $status_table;
 		}
 		else
 		{
-			$status_table->simple_row("Name", 
-				DarkPlacesStringConverter::string_dp2none($status["hostname"]));
+			$server_name = DpStringFunc::string_dp2html($status["hostname"]);
+			if ( $stats_url )
+				$server_name = "<a href='$stats_url'>$server_name</a>";
+			$status_table->simple_row("Server", $server_name, false);
+			$status_table->simple_row("Address","$public_host:$port");
+				
 			$status_table->simple_row("Map", $status["mapname"]);
 			$status_table->simple_row("Players", 
 				"{$status['clients']}/{$status['sv_maxclients']}".
@@ -200,12 +206,12 @@ class DarkPlaces_Singleton
 
 			if (!empty($status["players"]))
 			{
-				$players = new HTML_Table('xonpress_players');
+				$players = new HTML_Table("{$css_prefix}players");
 				$players->header_row(array("Name", "Score", "Ping"));
 
 				foreach ( $status["players"] as $player )
 					$players->data_row( array (
-						DarkPlacesStringConverter::string_dp2html($player->name),
+						DpStringFunc::string_dp2html($player->name),
 						$player->score == -666 ? "spectator" : $player->score,
 						$player->ping != 0 ? $player->ping : "bot",
 					), false );
@@ -215,9 +221,6 @@ class DarkPlaces_Singleton
 		
 		return $html;
 	}
-	
-	
-	
 }
 
 
@@ -278,7 +281,7 @@ class Color_12bit
 		if ( strlen($dpcolor) == 3 )
 			return new Color_12bit(hexdec($dpcolor[0]),hexdec($dpcolor[1]),hexdec($dpcolor[2]));
 		else if ( strlen($dpcolor) == 1 )
-			switch ( $dpcolor[0])
+			switch ( $dpcolor[0] )
 			{
 				case 0: return new Color_12bit(0,0,0);
 				case 1: return new Color_12bit(0xf,0,0);
@@ -288,8 +291,8 @@ class Color_12bit
 				case 5: return new Color_12bit(0,0xf,0xf);
 				case 6: return new Color_12bit(0xf,0,0xf);
 				case 7: return new Color_12bit(0xf,0xf,0xf);
-				case 8:
-				case 9: return new Color_12bit(0x8,0x8,0x8);
+				case 8: return new Color_12bit(0x8,0x8,0x8);
+				case 9: return new Color_12bit(0xc,0xc,0xc);
 			}
 		return new Color_12bit();
 	}
@@ -309,7 +312,7 @@ class Color_12bit
 }
 
 // DarkPlaces to HTML functor
-class DarkPlacesStringConverter
+class DpStringFunc
 {	
 	private $open = false;
 	public $min_luma = 0;
@@ -378,7 +381,7 @@ class DarkPlacesStringConverter
 	 */
 	static function string_dp2html($string)
 	{
-		$functor = new DarkPlacesStringConverter();
+		$functor = new DpStringFunc();
 		
 		return preg_replace_callback(self::$color_regex,$functor,
 			self::string_dp_convert($string)).$functor->html_close();
