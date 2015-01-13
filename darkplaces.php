@@ -192,7 +192,9 @@ class DarkPlaces_Singleton
 				DarkPlacesStringConverter::string_dp2none($status["hostname"]));
 			$status_table->simple_row("Map", $status["mapname"]);
 			$status_table->simple_row("Players", 
-				"{$status['clients']}/{$status['sv_maxclients']} ({$status['bots']} bots)");
+				"{$status['clients']}/{$status['sv_maxclients']}".
+					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "")
+			);
 
 			$html .= $status_table;
 
@@ -205,7 +207,7 @@ class DarkPlaces_Singleton
 					$players->data_row( array (
 						DarkPlacesStringConverter::string_dp2html($player->name),
 						$player->score == -666 ? "spectator" : $player->score,
-						$player->ping,
+						$player->ping != 0 ? $player->ping : "bot",
 					), false );
 				$html .= $players;
 			}
