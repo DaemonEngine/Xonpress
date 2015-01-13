@@ -219,6 +219,79 @@ class DarkPlaces_Singleton
 }
 
 
+/**
+ * \brief Simple, 12 bit rgb color
+ */
+class Color_12bit
+{
+	public $r, $g, $b;
+	
+	function __construct ($r=0, $g=0, $b=0)
+	{
+		$this->r = $r;
+		$this->g = $g;
+		$this->b = $b;
+	}
+	
+	/**
+	 * \brief Get the 12bit integer
+	 */
+	function bitmask()
+	{
+		return ($this->r<<8)|($this->g<<4)|$this->b;
+	}
+	
+	function luma()
+	{
+		return (0.3*$this->r + 0.59*$this->g + 0.11*$this->b) / 15;
+	}
+	
+	function multiply($value)
+	{
+		$this->r = (int)($this->r*$value);
+		$this->g = (int)($this->g*$value);
+		$this->b = (int)($this->b*$value);
+	}
+	
+	/**
+	 * \brief Decode darkplaces color
+	 */
+	static function decode_dp($dpcolor)
+	{
+		$dpcolor = ltrim($dpcolor,"^x");
+		
+		if ( strlen($dpcolor) == 3 )
+			return new Color_12bit(hexdec($dpcolor[0]),hexdec($dpcolor[1]),hexdec($dpcolor[2]));
+		else if ( strlen($dpcolor) == 1 )
+			switch ( $dpcolor[0])
+			{
+				case 0: return new Color_12bit(0,0,0);
+				case 1: return new Color_12bit(0xf,0,0);
+				case 2: return new Color_12bit(0,0xf,0);
+				case 3: return new Color_12bit(0xf,0xf,0);
+				case 4: return new Color_12bit(0,0,0xf);
+				case 5: return new Color_12bit(0,0xf,0xf);
+				case 6: return new Color_12bit(0xf,0,0xf);
+				case 7: return new Color_12bit(0xf,0xf,0xf);
+				case 8:
+				case 9: return new Color_12bit(0x8,0x8,0x8);
+			}
+		return new Color_12bit();
+	}
+	
+	/**
+	 * \brief Encode to html
+	 */
+	function encode_html()
+	{
+		return "#".dechex($this->r).dechex($this->g).dechex($this->b);
+	}
+	
+	function __toString()
+	{
+		return $this->encode_html();
+	}
+}
 
 // DarkPlaces to HTML functor
 class DarkPlacesStringConverter
@@ -232,14 +305,23 @@ class DarkPlacesStringConverter
 			$this->open = false;
 			return "</span>";
 		}
+		return "";
 	}
 	
 	function __invoke($matches="") 
 	{
 		if (!empty($matches[2]))
 		{
+			$close = $this->html_close();
 			$this->open = true;
-			return "<span style='color: #".$this->color_from_dp($matches[2]).";'>";
+			
+			$color = Color_12bit::decode_dp($matches[2]);
+			
+			$luma = $color->luma();
+			if ( $luma > 0.8 )
+				$color->multiply(0.8);
+			
+			return "$close<span style='color: $color;'>";
 		}
 		
 		if (!empty($matches[1]))
@@ -249,33 +331,7 @@ class DarkPlacesStringConverter
 		else
 			$text = $matches;
 		
-		return htmlspecialchars($text) . $this->html_close();
-	}
-	
-	/**
-	 * \brief Create a color from a DP ^string
-	 */
-	function color_from_dp($color)
-	{
-		if ( strlen($color) == 2 && ($code = (int)$color[1]) <= 9 ) // ^N
-		{
-			switch ( $code )
-			{
-				case 0: return '000';
-				case 1: return 'f00';
-				case 2: return '0f0';
-				case 3: return 'ff0';
-				case 4: return '00f';
-				case 5: return '0ff';
-				case 6: return 'f0f';
-				case 7: return 'fff';
-				case 8: return '888';
-				case 9: return 'ccc';
-			}
-		}
-		else if ( strlen($color) == 5 ) // ^xNNN
-			return substr($color,2);
-		return "";
+		return htmlspecialchars($text);
 	}
 	
     //                              1      2                                   3
