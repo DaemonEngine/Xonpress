@@ -227,7 +227,6 @@ class DarkPlaces_Singleton
 		
 		if ( empty($public_host) ) $public_host = $host;
 
-		$html = "";
 		$status_table = new HTML_Table("{$css_prefix}status");
 
 
@@ -239,7 +238,6 @@ class DarkPlaces_Singleton
 				false);
 			if ( $stats_url )
 				$status_table->simple_row("Stats","<a href='$stats_url'>$stats_url</a>");
-			$html .= $status_table;
 		}
 		else
 		{
@@ -254,25 +252,31 @@ class DarkPlaces_Singleton
 				"{$status['clients']}/{$status['sv_maxclients']}".
 					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "")
 			);
-
-			$html .= $status_table;
-
-			if (!empty($status["players"]))
-			{
-				$players = new HTML_Table("{$css_prefix}players");
-				$players->header_row(array("Name", "Score", "Ping"));
-
-				foreach ( $status["players"] as $player )
-					$players->data_row( array (
-						DpStringFunc::string_dp2html($player->name),
-						$player->score == -666 ? "spectator" : $player->score,
-						$player->ping != 0 ? $player->ping : "bot",
-					), false );
-				$html .= $players;
-			}
 		}
 		
-		return $html;
+		return $status_table;
+	}
+	
+	
+	function players_html($host = "127.0.0.1", $port = 26000, $css_prefix="dptable_")
+	{
+		$status = $this->status($host, $port);
+		
+		if (!empty($status["players"]))
+		{
+			$players = new HTML_Table("{$css_prefix}players");
+			$players->header_row(array("Name", "Score", "Ping"));
+
+			foreach ( $status["players"] as $player )
+				$players->data_row( array (
+					DpStringFunc::string_dp2html($player->name),
+					$player->score == -666 ? "spectator" : $player->score,
+					$player->ping != 0 ? $player->ping : "bot",
+				), false );
+			return $players;
+		}
+		
+		return "";
 	}
 }
 

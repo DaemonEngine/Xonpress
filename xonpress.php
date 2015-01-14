@@ -80,8 +80,7 @@ class DarkPlaces_ConnectionWp_Factory
 	}
 }
 
-
-function xonpress_showstatus( $attributes )
+function xonpress_status( $attributes )
 {
 	$attributes = shortcode_atts( array (
 		'ip'   => '127.0.0.1',
@@ -92,6 +91,16 @@ function xonpress_showstatus( $attributes )
 
 	return DarkPlaces()->status_html( $attributes["ip"], $attributes["port"],
 		$attributes['public_host'], $attributes['stats_url'] );
+}
+
+function xonpress_players( $attributes )
+{
+	$attributes = shortcode_atts( array (
+		'ip'   => '127.0.0.1',
+		'port' => 26000,
+	), $attributes );
+
+	return DarkPlaces()->players_html( $attributes["ip"], $attributes["port"] );
 }
 
 function xonpress_screenshot( $attributes )
@@ -143,12 +152,16 @@ function xonpress_initialize()
 if ( !function_exists('add_shortcode') )
 {
 	function shortcode_atts($a, $b) { return $a; }
-	echo xonpress_showstatus(array());
+	echo xonpress_status(array());
+	echo "\n\n";
+	echo xonpress_players(array());
 }
 else
 {
-	add_shortcode('xon_status', 'xonpress_showstatus');
-	add_shortcode('xon_img', 'xonpress_screenshot');
+	add_shortcode('xon_status',  'xonpress_status');
+	add_shortcode('xon_img',     'xonpress_screenshot');
+	add_shortcode('xon_players', 'xonpress_players');
+	
 	register_activation_hook( __FILE__, 'xonpress_initialize' );
 	
 	DarkPlaces()->connection_factory = new DarkPlaces_ConnectionWp_Factory();
