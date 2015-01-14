@@ -133,13 +133,66 @@ class DarkPlaces_Connection
 }
 
 /**
+ * \brief Connection to darkplaces which caches queries to database (abstract base)
+ */
+abstract class DarkPlaces_ConnectionCached extends DarkPlaces_Connection
+{
+	protected $dont_cache = array('getchallenge');
+	public $cache_errors = false;
+
+	function __construct($host="127.0.0.1", $port=26000) 
+	{
+		parent::__construct($host, $port);
+	}
+	
+	function key_suggestion($request)
+	{
+		return "{$this->host}:{$this->port}:$request";
+	}
+	
+	abstract protected function get_cached_request($request);
+	abstract protected function set_cached_request($request, $response);
+	
+	function request($request)
+	{
+		$request_command = strtok($request," ");
+		$cached = false;
+		if (!in_array($request_command, $this->dont_cache))
+		{
+			$cached = $this->get_cached_request($request);
+			if ( $cached )
+				return $cached;
+		}
+		
+		$result = parent::request($request);
+		if ( $this->cache_errors || !$result["error"] )
+			$this->set_cached_request($request,$result);
+		
+		return $result;
+	}
+}
+
+class DarkPlaces_Connection_Factory
+{
+	function build($host, $port)
+	{
+		return new DarkPlaces_Connection($host,$port);
+	}
+}
+
+/**
  * \brief Static access to darkplaces servers and caches results
  */
 class DarkPlaces_Singleton
 {
 	private $connections = array();
+	public $connection_factory;
 	
-	protected function __construct() {}
+	protected function __construct() 
+	{
+		$this->connection_factory = new DarkPlaces_Connection_Factory();
+	}
+	
 	protected function __clone() {}
 	
 	static function instance()
@@ -156,7 +209,7 @@ class DarkPlaces_Singleton
 		$server = "$host:$port";
 		if (isset($this->connections[$server]))
 			return $this->connections[$server];
-		return $this->connections[$server] = new DarkPlaces_Connection($host,$port);
+		return $this->connections[$server] = $this->connection_factory->build($host,$port); 
 	}
 	
 	function status($host="127.0.0.1", $port=26000)
@@ -221,6 +274,11 @@ class DarkPlaces_Singleton
 		
 		return $html;
 	}
+}
+
+function DarkPlaces()
+{
+	return DarkPlaces_Singleton::instance();
 }
 
 
@@ -449,10 +507,4 @@ class DpStringFunc
 		}
 		return $out;
 	}
-}
-
-
-function DarkPlaces()
-{
-	return DarkPlaces_Singleton::instance();
 }
