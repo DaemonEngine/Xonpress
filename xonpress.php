@@ -81,7 +81,6 @@ class DarkPlaces_ConnectionWp_Factory
 }
 
 
-
 function xonpress_showstatus( $attributes )
 {
 	$attributes = shortcode_atts( array (
@@ -93,6 +92,33 @@ function xonpress_showstatus( $attributes )
 
 	return DarkPlaces()->status_html( $attributes["ip"], $attributes["port"],
 		$attributes['public_host'], $attributes['stats_url'] );
+}
+
+function xonpress_screenshot( $attributes )
+{
+	$upload_dir = wp_upload_dir();
+	$attributes = shortcode_atts( array (
+		'ip'        => '127.0.0.1',
+		'port'      => 26000,
+		'img_path'  => "${upload_dir['basedir']}/mapshots",
+		'img_url'   => "${upload_dir['baseurl']}/mapshots",
+		'class'     => 'xonpress_screenshot',
+		'on_error'  => '',
+		'on_noimage'=> ''
+	), $attributes );
+
+	$status = DarkPlaces()->status( $attributes["ip"], $attributes["port"] );
+	if ( $status["error"] )
+		return $attributes["on_error"];
+		
+	$image = strtolower($status["mapname"]).".jpg";
+	if ( !file_exists($attributes['img_path'].$image) )
+		return $attributes["on_noimage"];
+		
+	return "<img class='{$attributes['class']}' ".
+		"src='{$attributes['img_url']}/$image' ".
+		"alt='Screenshot of {$status['mapname']}' ".
+		"/>";
 }
 
 function xonpress_initialize()
@@ -122,6 +148,7 @@ if ( !function_exists('add_shortcode') )
 else
 {
 	add_shortcode('xon_status', 'xonpress_showstatus');
+	add_shortcode('xon_img', 'xonpress_screenshot');
 	register_activation_hook( __FILE__, 'xonpress_initialize' );
 	
 	DarkPlaces()->connection_factory = new DarkPlaces_ConnectionWp_Factory();
