@@ -103,7 +103,7 @@ function xonpress_screenshot( $attributes )
 		'img_path'  => "${upload_dir['basedir']}/mapshots",
 		'img_url'   => "${upload_dir['baseurl']}/mapshots",
 		'class'     => 'xonpress_screenshot',
-		'on_error'  => '',
+		'on_error'  => '', // TODO these should be placeholder images (maybe just 1?)
 		'on_noimage'=> ''
 	), $attributes );
 
@@ -112,7 +112,7 @@ function xonpress_screenshot( $attributes )
 		return $attributes["on_error"];
 		
 	$image = strtolower($status["mapname"]).".jpg";
-	if ( !file_exists($attributes['img_path'].$image) )
+	if ( !file_exists($attributes['img_path']."/".$image) )
 		return $attributes["on_noimage"];
 		
 	return "<img class='{$attributes['class']}' ".
