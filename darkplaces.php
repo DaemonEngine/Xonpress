@@ -165,7 +165,7 @@ abstract class DarkPlaces_ConnectionCached extends DarkPlaces_Connection
 		}
 		
 		$result = parent::request($request);
-		if ( $this->cache_errors || !$result["error"] )
+		if ( $this->cache_errors || $result !== false )
 			$this->set_cached_request($request,$result);
 		
 		return $result;

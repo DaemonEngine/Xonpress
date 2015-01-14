@@ -44,7 +44,7 @@ class DarkPlaces_ConnectionWp extends DarkPlaces_ConnectionCached
 		global $wpdb;
 		$table = $wpdb->prefix.self::table_name;
 		return $wpdb->get_var( $wpdb->prepare("
-			SELECT response FROM $table  WHERE 
+			SELECT response FROM $table WHERE 
 			server = %s 
 			AND port = %d 
 			AND query = %s 
@@ -60,7 +60,7 @@ class DarkPlaces_ConnectionWp extends DarkPlaces_ConnectionCached
 		global $wpdb;
 		$table = $wpdb->prefix.self::table_name;
 		$wpdb->query($wpdb->prepare("
-			INSERT INTO xonpress_cache (server, port, query, response) 
+			INSERT INTO $table (server, port, query, response) 
 			VALUE ( %s, %d, %s, %s )
 			ON DUPLICATE KEY UPDATE response = %s",
 			$this->host,
@@ -112,8 +112,6 @@ function xonpress_initialize()
 
 	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 	dbDelta( $sql );
-	
-	DarkPlaces()->connection_factory = new DarkPlaces_ConnectionWp_Factory();
 }
 
 if ( !function_exists('add_shortcode') )
@@ -125,4 +123,6 @@ else
 {
 	add_shortcode('xon_status', 'xonpress_showstatus');
 	register_activation_hook( __FILE__, 'xonpress_initialize' );
+	
+	DarkPlaces()->connection_factory = new DarkPlaces_ConnectionWp_Factory();
 }
