@@ -512,3 +512,41 @@ class DpStringFunc
 		return $out;
 	}
 }
+
+/**
+ * \brief Class used to load mapinfo files
+ */
+class Mapinfo
+{
+	public $name;        ///< Name of the bsp
+	public $title;       ///< Human-readable name
+	public $description; ///< Longer description
+	public $author;      ///< Map creator(s)
+	public $gametypes = array(); ///< List of supported gametypes
+	
+	/**
+	 * \brief Parse mapinfo file
+	 */
+	function load_file($file)
+	{
+		if (file_exists($file))
+		{
+			$this->name = basename($file,".mapinfo");
+			$lines = file($file);
+			$this->gametypes = array();
+			foreach ( $lines as $line )
+			{
+				if ( preg_match('/^gametype\s+([a-z]+)/', $line, $matches) )
+					$this->gametypes []= $matches[1];
+				else if ( preg_match('/^description\s+(.+)/', $line, $matches) )
+					$this->description = $matches[1];
+				else if ( preg_match('/^title\s+(.+)/', $line, $matches) )
+					$this->title = $matches[1];
+				else if ( preg_match('/^author\s+(.+)/', $line, $matches) )
+					$this->author = $matches[1];
+			}
+			return true;
+		}
+		return false;
+	}
+}

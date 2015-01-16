@@ -130,6 +130,44 @@ function xonpress_screenshot( $attributes )
 		"/>";
 }
 
+function xonpress_mapinfo( $attributes ) 
+{
+	if ( empty($attributes['title']) && empty($attributes['mapinfo']) )
+		return '';
+	
+	$upload_dir = wp_upload_dir();
+	$attributes = shortcode_atts( array (
+		'screenshot'   => '', // TODO
+		'mapinfo'      => '',
+		'title'        => null,
+		'description'  => null,
+		'author'       => null,
+		'gametypes'    => null,
+		'img_path'     => "${upload_dir['basedir']}/mapshots",
+		'img_url'      => "${upload_dir['baseurl']}/mapshots",
+		'mapinfo_path' => "${upload_dir['basedir']}/mapinfo/maps",
+	), $attributes );
+	
+	$mapinfo = new Mapinfo();
+	
+	if ( $attributes['mapinfo'] )
+		$mapinfo->load_file($attributes['mapinfo_path'].'/'.$attributes['mapinfo']);
+	
+	foreach ( array('title', 'description', 'author') as $key)
+		if ( isset($attributes[$key]) )
+			$mapinfo->$key = $attributes[$key];
+	if ( isset($attributes['gametypes']) )
+		$mapinfo->gametypes = explode(' ', $attributes['gametypes']);
+		
+	
+	$table = new HTML_Table();
+	$table->simple_header($mapinfo->title);
+	$table->simple_row('Author',$mapinfo->author);
+	$table->simple_row('Game types',implode(', ',$mapinfo->gametypes));
+	
+	return $table;
+}
+
 function xonpress_initialize()
 {
 	global $wpdb;
@@ -151,16 +189,32 @@ function xonpress_initialize()
 
 if ( !function_exists('add_shortcode') )
 {
-	function shortcode_atts($a, $b) { return $a; }
+	function shortcode_atts($a, $b) 
+	{
+		foreach ( $b as $k => $v )
+			$a[$k] = $v;
+		return $a;
+	}
+	function wp_upload_dir() 
+	{ 
+		return array(
+			'basedir' => dirname(__FILE__)."/../../uploads",
+			'baseurl' => "http://",
+		); 
+	}
+	
 	echo xonpress_status(array());
 	echo "\n\n";
 	echo xonpress_players(array());
+	echo "\n\n";
+	echo xonpress_mapinfo(array('mapinfo'=>'canterlot_v005.mapinfo'));
 }
 else
 {
 	add_shortcode('xon_status',  'xonpress_status');
 	add_shortcode('xon_img',     'xonpress_screenshot');
 	add_shortcode('xon_players', 'xonpress_players');
+	add_shortcode('xon_mapinfo', 'xonpress_mapinfo');
 	
 	register_activation_hook( __FILE__, 'xonpress_initialize' );
 	

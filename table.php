@@ -56,9 +56,9 @@ class HTML_TableCell extends HTML_Element
 {
 	public $contents;
 	
-	function __construct($contents,$header=false)
+	function __construct($contents, $header=false, $attributes = array())
 	{
-		parent::__construct($header ? "th" : "td");
+		parent::__construct($header ? "th" : "td", false, $attributes);
 		$this->contents = $contents;
 	}
 	
@@ -81,6 +81,14 @@ class HTML_Table extends HTML_Element
 		$this->attributes["class"] = $css_class;
 	}
 	
+	function simple_header($data, $escape=true)
+	{
+		if ( $escape ) 
+			$data = htmlentities($data);
+		$this->rows[] = array(new HTML_TableCell($data,true,array('colspan'=>2)));
+	}
+	
+	
 	function simple_row($header, $data, $escape=true)
 	{
 		if ( $escape ) 
@@ -91,20 +99,29 @@ class HTML_Table extends HTML_Element
 		$this->rows[] = array(new HTML_TableCell($header,true), new HTML_TableCell($data));
 	}
 	
-	function header_row($cell_contents, $escape=true)
+	private function generic_row($cell_contents, $escape, $header)
 	{
+		if ( !is_array($cell_contents) )
+			$cell_contents = array($cell_contents);
 		$row = array();
 		foreach ( $cell_contents as $data )
-			$row []= new HTML_TableCell($escape ? htmlentities($data) : $data,  true);
+		{
+			if ($data instanceof HTML_TableCell)
+				$row []= $data;
+			else
+				$row []= new HTML_TableCell($escape ? htmlentities($data) : $data,  $header);
+		}
 		$this->rows []= $row;
+	}
+	
+	function header_row($cell_contents, $escape=true)
+	{
+		$this->generic_row ($cell_contents, $escape, true);
 	}
 	
 	function data_row($cell_contents, $escape=true)
 	{
-		$row = array();
-		foreach ( $cell_contents as $data )
-			$row []= new HTML_TableCell($escape ? htmlentities($data) : $data,  false);
-		$this->rows []= $row;
+		$this->generic_row ($cell_contents, $escape, false);
 	}
 	
 	function contents()
