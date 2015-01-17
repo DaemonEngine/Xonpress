@@ -40,7 +40,22 @@ https://github.com/Evil-Ant-Colony/Xonotic-EAC-Scripts/blob/master/pk3/pk3-get-s
  * class    [xonpress_screenshot]     CSS class for the image element
  * on_error/on_noimage []             HTML to be displayed in case of error.
  
- 
+= xon_mapinfo =
+
+Shows information about a map.
+It calls the theme template 'xonotic-map', passing (as a global variable)
+$mapinfo, which is an instance of Mapinfo.
+
+ * mapinfo     Mapinfo file, if provided all fields are initialized from that
+ * title       Map title
+ * description One line description
+ * author      Name of the author(s)
+ * gametypes   Whitespace separated list of gametype identifiers
+ * screenshot  Explicit screenshot URL (otherwise detected automatically) 
+ * img_path     [upload_basedir/mapshots] Server path used to check if a screenshot exists
+ * img_url      [upload_baseurl/mapshots] Base URL used to serve the images
+ * mapinfo_path [upload_basedir/mapinfo/maps] Where to look for mapinfo files
+
 == Installation ==
 
 Nothing special, just extract the files in wp-contents/plugins/xonpress

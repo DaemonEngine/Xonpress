@@ -137,17 +137,18 @@ function xonpress_mapinfo( $attributes )
 	
 	$upload_dir = wp_upload_dir();
 	$attributes = shortcode_atts( array (
-		'screenshot'   => '', // TODO
 		'mapinfo'      => '',
 		'title'        => null,
 		'description'  => null,
 		'author'       => null,
 		'gametypes'    => null,
+		'screenshot'   => '',
 		'img_path'     => "${upload_dir['basedir']}/mapshots",
 		'img_url'      => "${upload_dir['baseurl']}/mapshots",
 		'mapinfo_path' => "${upload_dir['basedir']}/mapinfo/maps",
 	), $attributes );
 	
+	global $mapinfo;
 	$mapinfo = new Mapinfo();
 	
 	if ( $attributes['mapinfo'] )
@@ -158,14 +159,22 @@ function xonpress_mapinfo( $attributes )
 			$mapinfo->$key = $attributes[$key];
 	if ( isset($attributes['gametypes']) )
 		$mapinfo->gametypes = explode(' ', $attributes['gametypes']);
-		
 	
-	$table = new HTML_Table();
-	$table->simple_header($mapinfo->title);
-	$table->simple_row('Author',$mapinfo->author);
-	$table->simple_row('Game types',implode(', ',$mapinfo->gametypes));
-	
-	return $table;
+	if ( $attributes['screenshot'] )
+	{
+		$mapinfo->screenshot = $attributes['screenshot'];
+	}
+	else
+	{
+		$image = strtolower($mapinfo->name).".jpg";
+		if ( file_exists($attributes['img_path']."/".$image) )
+			$mapinfo->screenshot = "{$attributes['img_url']}/$image";
+	}
+	ob_start();
+	get_template_part('xonotic-map');
+	$buffer = ob_get_contents();
+	@ob_end_clean();
+	return $buffer;
 }
 
 function xonpress_initialize()

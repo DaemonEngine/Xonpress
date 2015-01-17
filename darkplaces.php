@@ -523,6 +523,7 @@ class Mapinfo
 	public $description; ///< Longer description
 	public $author;      ///< Map creator(s)
 	public $gametypes = array(); ///< List of supported gametypes
+	public $screenshot; ///< Screenshot URL (needs to be set manually)
 	
 	/**
 	 * \brief Parse mapinfo file
