@@ -29,6 +29,7 @@
 
 require_once('xp_darkplaces.php');
 require_once('xp_shortcodes.php');
+require_once('xp_widgets.php');
 require_once('xp_settings.php');
 
 
@@ -46,6 +47,7 @@ add_shortcode('xon_mapinfo', 'xonpress_mapinfo');
 
 register_activation_hook( __FILE__, 'xonpress_initialize' );
 
+add_action( 'widgets_init', 'xonpress_widgets_init' );
 
 $xonpress_settings = new Xonpress_Settings();
 
