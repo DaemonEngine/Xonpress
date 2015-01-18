@@ -50,6 +50,16 @@ function xonpress_screenshot( $attributes )
 		"/>";
 }
 
+function xonpress_player_number ( $attributes )
+{
+	$attributes = shortcode_atts( array (
+		'ip'        => '127.0.0.1',
+		'port'      => 26000,
+	), $attributes );
+
+	return DarkPlaces()->player_number( $attributes["ip"], $attributes["port"] );
+}
+
 function xonpress_mapinfo( $attributes ) 
 {
 	if ( empty($attributes['title']) && empty($attributes['mapinfo']) )

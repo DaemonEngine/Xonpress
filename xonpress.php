@@ -40,10 +40,12 @@ function xonpress_initialize()
 }
 
 
-add_shortcode('xon_status',  'xonpress_status');
-add_shortcode('xon_img',     'xonpress_screenshot');
-add_shortcode('xon_players', 'xonpress_players');
-add_shortcode('xon_mapinfo', 'xonpress_mapinfo');
+add_shortcode('xon_status',        'xonpress_status'       );
+add_shortcode('xon_img',           'xonpress_screenshot'   );
+add_shortcode('xon_players',       'xonpress_players'      );
+add_shortcode('xon_mapinfo',       'xonpress_mapinfo'      );
+add_shortcode('xon_player_number', 'xonpress_player_number');
+
 
 register_activation_hook( __FILE__, 'xonpress_initialize' );
 

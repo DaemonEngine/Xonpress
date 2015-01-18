@@ -220,6 +220,24 @@ class DarkPlaces_Singleton
 		return $conn->cached_status = $conn->status();
 	}
 	
+	
+	/**
+	 * \brief Get formatted player number
+	 * \param $status Status array or host name/address
+	 * \param $port Ignored or port number when \c $status is a host
+	 */
+	function player_number($status, $port=null)
+	{
+		if ( is_string($status) && isset($port) )
+			return $this->player_number($this->status($host, $port));
+			
+		if ( $status['error'] )
+			return 0;
+		else
+			return "{$status['clients']}/{$status['sv_maxclients']}".
+					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "");
+	}
+	
 	function status_html($host = "127.0.0.1", $port = 26000, 
 		$public_host = null, $stats_url = null, $css_prefix="dptable_")
 	{
@@ -248,10 +266,7 @@ class DarkPlaces_Singleton
 			$status_table->simple_row("Address","$public_host:$port");
 				
 			$status_table->simple_row("Map", $status["mapname"]);
-			$status_table->simple_row("Players", 
-				"{$status['clients']}/{$status['sv_maxclients']}".
-					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "")
-			);
+			$status_table->simple_row("Players", $this->player_number($status));
 		}
 		
 		return $status_table;

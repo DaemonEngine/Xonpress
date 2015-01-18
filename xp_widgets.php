@@ -48,8 +48,7 @@ class Xonpress_ServerTable extends WP_Widget
 				else
 					$table->simple_row(
 						DpStringFunc::string_dp2none($status["hostname"]),
-						"{$status['clients']}/{$status['sv_maxclients']}".
-							((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "")
+						DarkPlaces()->player_number($status)
 					);
 			}
 		}
