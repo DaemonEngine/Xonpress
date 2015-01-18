@@ -105,12 +105,9 @@ function xonpress_players( $attributes )
 
 function xonpress_screenshot( $attributes )
 {
-	$upload_dir = wp_upload_dir();
 	$attributes = shortcode_atts( array (
 		'ip'        => '127.0.0.1',
 		'port'      => 26000,
-		'img_path'  => "${upload_dir['basedir']}/mapshots",
-		'img_url'   => "${upload_dir['baseurl']}/mapshots",
 		'class'     => 'xonpress_screenshot',
 		'on_error'  => '', // TODO these should be placeholder images (maybe just 1?)
 		'on_noimage'=> ''
@@ -121,11 +118,11 @@ function xonpress_screenshot( $attributes )
 		return $attributes["on_error"];
 		
 	$image = strtolower($status["mapname"]).".jpg";
-	if ( !file_exists($attributes['img_path']."/".$image) )
+	if ( !file_exists(get_option('xonpress_maps_dir')."/maps/$image") )
 		return $attributes["on_noimage"];
 		
 	return "<img class='{$attributes['class']}' ".
-		"src='{$attributes['img_url']}/$image' ".
+		"src='".get_option('xonpress_maps_url')."/maps/$image' ".
 		"alt='Screenshot of {$status['mapname']}' ".
 		"/>";
 }
@@ -135,7 +132,6 @@ function xonpress_mapinfo( $attributes )
 	if ( empty($attributes['title']) && empty($attributes['mapinfo']) )
 		return '';
 	
-	$upload_dir = wp_upload_dir();
 	$attributes = shortcode_atts( array (
 		'mapinfo'      => '',
 		'title'        => null,
@@ -143,18 +139,20 @@ function xonpress_mapinfo( $attributes )
 		'author'       => null,
 		'gametypes'    => null,
 		'screenshot'   => '',
-		'img_path'     => "${upload_dir['basedir']}/mapshots",
-		'img_url'      => "${upload_dir['baseurl']}/mapshots",
-		'mapinfo_path' => "${upload_dir['basedir']}/mapinfo/maps",
+		'download'     => '',
+		'sources'      => '',
 	), $attributes );
 	
 	global $mapinfo;
 	$mapinfo = new Mapinfo();
 	
-	if ( $attributes['mapinfo'] )
-		$mapinfo->load_file($attributes['mapinfo_path'].'/'.$attributes['mapinfo']);
+	$maps_url = get_option('xonpress_maps_url');
+	$maps_dir = get_option('xonpress_maps_dir');
 	
-	foreach ( array('title', 'description', 'author') as $key)
+	if ( $attributes['mapinfo'] )
+		$mapinfo->load_file("$maps_dir/maps/{$attributes['mapinfo']}");
+	
+	foreach ( array('title', 'description', 'author', 'sources') as $key)
 		if ( isset($attributes[$key]) )
 			$mapinfo->$key = $attributes[$key];
 	if ( isset($attributes['gametypes']) )
@@ -167,9 +165,21 @@ function xonpress_mapinfo( $attributes )
 	else
 	{
 		$image = strtolower($mapinfo->name).".jpg";
-		if ( file_exists($attributes['img_path']."/".$image) )
-			$mapinfo->screenshot = "{$attributes['img_url']}/$image";
+		if ( file_exists("$maps_dir/maps/$image") )
+			$mapinfo->screenshot = "$maps_url/maps/$image";
 	}
+	
+	if ( $attributes['download'] )
+	{
+		$mapinfo->download = $attributes['download'];
+	}
+	else
+	{
+		$pk3 = $mapinfo->name.".pk3";
+		if ( file_exists("$maps_dir/$pk3") )
+			$mapinfo->download = "$maps_url/$pk3";
+	}
+	
 	ob_start();
 	get_template_part('xonotic-map');
 	$buffer = ob_get_contents();
@@ -194,6 +204,126 @@ function xonpress_initialize()
 
 	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 	dbDelta( $sql );
+	
+	Xonpress_Settings::set_defaults();
+	
+}
+
+class Xonpress_Settings
+{
+	private $id = 'xonpress_settings';
+	
+	function __construct()
+	{
+		add_action( 'admin_init', array($this,'admin_init') );
+		add_action( 'admin_menu', array($this, 'admin_menu') );
+	}
+	
+	static function set_defaults()
+	{
+		$upload_dir = wp_upload_dir();
+		add_option('xonpress_maps_dir',"{$upload_dir['basedir']}/maps");
+		add_option('xonpress_maps_url',"{$upload_dir['baseurl']}/maps");
+	}
+
+	function admin_init()
+	{
+		register_setting( $this->id, $this->id, array($this,'sanitize') );
+	
+		add_settings_section(
+			'xonpress_section', 
+			'Options', 
+			function(){}, 
+			$this->id
+		);
+
+		add_settings_field( 
+			'xonpress_maps_dir', 
+			'Map Directory', 
+			array($this,'render_xonpress_maps_dir'), 
+			$this->id, 
+			'xonpress_section' 
+		);
+
+		add_settings_field( 
+			'xonpress_maps_url', 
+			'Map URL', 
+			array($this,'render_xonpress_maps_url'),
+			$this->id, 
+			'xonpress_section' 
+		);
+	}
+	
+	function admin_menu()
+	{
+		if ( !is_admin() )
+			return;
+		
+		add_options_page( 
+			'Xonpress', 
+			'Xonpress', 
+			'manage_options', 
+			$this->id, 
+			array($this,'menu_page')
+		);
+	}
+	
+	function menu_page()
+	{
+		?>
+		<form action='options.php' method='post'>
+			
+			<h2>Xonpress</h2>
+			
+			<?php
+			settings_fields( $this->id );
+			do_settings_sections( $this->id );
+			submit_button();
+			?>
+			
+		</form>
+		<?php
+	}
+	
+	function sanitize( $input )
+	{
+		$upload_dir = wp_upload_dir();
+		$clean_input = array();
+		
+		if ( isset($input['xonpress_maps_url']) )
+		{
+			$string = trim($input['xonpress_maps_url']);
+			if ( $string == "" )
+				$string = "{$upload_dir['baseurl']}/maps";
+			$clean_input['xonpress_maps_url'] = $string;
+		}
+		
+		if ( isset($input['xonpress_maps_dir']) )
+		{
+			$string = trim($input['xonpress_maps_dir']);
+			if ( $string == "" )
+				$string = "{$upload_dir['basedir']}/maps";
+			$clean_input['xonpress_maps_dir'] = $string;
+		}
+		
+		return $clean_input;
+	}
+	
+	function render_field($name)
+	{
+		$value = esc_attr(get_option($name));
+		echo "<input type='text' id='$name' name='$name' value='$value' />";
+	}
+	
+	function render_xonpress_maps_dir()
+	{
+		$this->render_field('xonpress_maps_dir');
+	}
+	
+	function render_xonpress_maps_url()
+	{
+		$this->render_field('xonpress_maps_url');
+	}
 }
 
 if ( !function_exists('add_shortcode') )
@@ -226,6 +356,7 @@ else
 	add_shortcode('xon_mapinfo', 'xonpress_mapinfo');
 	
 	register_activation_hook( __FILE__, 'xonpress_initialize' );
+	$xonpress_settings = new Xonpress_Settings();
 	
 	DarkPlaces()->connection_factory = new DarkPlaces_ConnectionWp_Factory();
 }

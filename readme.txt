@@ -35,8 +35,6 @@ https://github.com/Evil-Ant-Colony/Xonotic-EAC-Scripts/blob/master/pk3/pk3-get-s
 
  * ip       [127.0.0.1]               Connection address to query the server
  * port     [26000]                   Connection (UDP) port to query the server
- * img_path [upload_basedir/mapshots] Server path used to check if a screenshot exists
- * img_url  [upload_baseurl/mapshots] Base URL used to serve the images
  * class    [xonpress_screenshot]     CSS class for the image element
  * on_error/on_noimage []             HTML to be displayed in case of error.
  
@@ -51,10 +49,18 @@ $mapinfo, which is an instance of Mapinfo.
  * description One line description
  * author      Name of the author(s)
  * gametypes   Whitespace separated list of gametype identifiers
- * screenshot  Explicit screenshot URL (otherwise detected automatically) 
- * img_path     [upload_basedir/mapshots] Server path used to check if a screenshot exists
- * img_url      [upload_baseurl/mapshots] Base URL used to serve the images
- * mapinfo_path [upload_basedir/mapinfo/maps] Where to look for mapinfo files
+ * screenshot  Explicit screenshot URL (otherwise detected automatically)
+ 
+== Options ==
+
+= xonpress_maps_dir =
+
+Base path to retrieve map information, screenshots and mapinfo are searched in
+the subdirectory /maps while pk3 files are searched directly here.
+
+= xonpress_maps_url =
+
+URL corresponding to xonpress_maps_dir
 
 == Installation ==
 
