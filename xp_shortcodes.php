@@ -31,20 +31,21 @@ function xonpress_screenshot( $attributes )
 		'ip'        => '127.0.0.1',
 		'port'      => 26000,
 		'class'     => 'xonpress_screenshot',
-		'on_error'  => '', // TODO these should be placeholder images (maybe just 1?)
-		'on_noimage'=> ''
 	), $attributes );
 
 	$status = DarkPlaces()->status( $attributes["ip"], $attributes["port"] );
-	if ( $status["error"] )
-		return $attributes["on_error"];
+	
+	$image_url = get_stylesheet_directory_uri()."/img/noscreenshot.png";
 		
-	$image = strtolower($status["mapname"]).".jpg";
-	if ( !file_exists(get_option('xonpress_maps_dir')."/maps/$image") )
-		return $attributes["on_noimage"];
+	if ( !$status["error"] )
+	{
+		$image = strtolower($status["mapname"]).".jpg";
+		if ( file_exists(get_option('xonpress_maps_dir')."/maps/$image") )
+			$image_url = get_option('xonpress_maps_url')."/maps/$image";
+	}
 		
 	return "<img class='{$attributes['class']}' ".
-		"src='".get_option('xonpress_maps_url')."/maps/$image' ".
+		"src='$image_url' ".
 		"alt='Screenshot of {$status['mapname']}' ".
 		"/>";
 }
@@ -89,6 +90,8 @@ function xonpress_mapinfo( $attributes )
 		$image = strtolower($mapinfo->name).".jpg";
 		if ( file_exists("$maps_dir/maps/$image") )
 			$mapinfo->screenshot = "$maps_url/maps/$image";
+		else
+			$mapinfo->screenshot = get_template_directory_uri()."/img/noscreenshot.png";
 	}
 	
 	if ( $attributes['download'] )

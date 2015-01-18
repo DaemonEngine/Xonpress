@@ -36,7 +36,6 @@ https://github.com/Evil-Ant-Colony/Xonotic-EAC-Scripts/blob/master/pk3/pk3-get-s
  * ip       [127.0.0.1]               Connection address to query the server
  * port     [26000]                   Connection (UDP) port to query the server
  * class    [xonpress_screenshot]     CSS class for the image element
- * on_error/on_noimage []             HTML to be displayed in case of error.
  
 = xon_mapinfo =
 
@@ -61,6 +60,13 @@ the subdirectory /maps while pk3 files are searched directly here.
 = xonpress_maps_url =
 
 URL corresponding to xonpress_maps_dir
+
+== Theme Requirements ==
+
+* img/noscreenshot.png
+** Image shown when a map screenshot cannot be found.
+* xonotic-map.php
+** Used by [xon_mapinfo], it should use the global $mapinfo
 
 == Installation ==
 
