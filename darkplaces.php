@@ -492,35 +492,63 @@ class DpStringFunc
 		$out = "";
 		
 		$unicode = array();        
-		$v = array();
+		$bytes = array();
 		
 		for ($i = 0; $i < strlen( $string ); $i++ ) 
 		{
 			$c = $string[$i];
-			$o = ord($c);
+			$char_byte = ord($c);
 			
-			if ( $o < 128 ) 
+			if ( $char_byte < 128 )
+			{
+				// ASCII
 				$out .= $c;
+			}
 			else 
 			{
-			
-				if ( count($v) == 0 )
+				// Start of multibyte character
+				// NOTE: the only one not starting with 0 or 10
+				if ( count($bytes) == 0 )
 				{
-					$s = "";
-					$length = ( $o < 224 ) ? 2 : 3;
+					$unicode_char = "";
+					$length = 0;
+					// extract number of leading 1s
+					while ( $char_byte & 0x80 )
+					{
+						$length++;
+						$char_byte <<= 1;
+					}
+					
+					// Must be at least 110..... or fail
+					if ( $length < 2 )
+						continue;
+					
+					// Restore byte (leading 1s have been eaten off)
+					$char_byte >>= $length;
 				}
 				
-				$v[] = $o;
-				$s .= $c;
+				// Keep track of bytes
+				$bytes[] = $char_byte;
+				$unicode_char .= $c;
 				
-				if ( count( $v ) == $length ) 
+				// Reached the end
+				// NOTE: checking for $length ensures that invalid utf-8 codes are discarded
+				if ( count( $bytes ) == $length )
 				{
-					$unicode = ( $length == 3 ) ?
-						( ( $v[0] % 16 ) << 12 ) + ( ( $v[1] % 64 ) << 6 ) + ( $v[2] % 64 ):
-						( ( $v[0] % 32 ) << 6 ) + ( $v[1] % 64 );
-					$out .= ( ($unicode & 0xFF00) == 0xE000 ) ? self::$qfont_table[$unicode&0xff] : $s;
+					$unicode = 0;
+					foreach ( $bytes as $byte )
+					{
+						// Add up all the bytes 
+						// Besides the first, they all start with 01... 
+						// So they give 6 bits and need to be &-ed with 63
+						$unicode <<= 6;
+						$unicode |= $byte & 63;
+					}
 					
-					$v = array();
+					// Get the output string we want
+					$out .= ( ($unicode & 0xFF00) == 0xE000 ) ? self::$qfont_table[$unicode&0xff] : $unicode_char;
+					
+					$bytes = array();
 				}
 			} 
 		}
