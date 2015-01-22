@@ -2,24 +2,57 @@
 
 class Xonpress_Settings
 {
-	private $id = 'xonpress_settings';
+	static $options;
+	static $prefix = 'xonpress_settings';
+	private $id;
+	
 	
 	function __construct()
 	{
+		$this->id = self::$prefix;
+		
+		if ( empty(self::$options) )
+			self::init();
+			
 		add_action( 'admin_init', array($this,'admin_init') );
 		add_action( 'admin_menu', array($this, 'admin_menu') );
 	}
 	
-	static function set_defaults()
+	static function option_key($key)
+	{
+		return self::$prefix.'_'.$key;
+	}
+	static function init()
 	{
 		$upload_dir = wp_upload_dir();
-		add_option('xonpress_maps_dir',"{$upload_dir['basedir']}/maps");
-		add_option('xonpress_maps_url',"{$upload_dir['baseurl']}/maps");
+		
+		self::$options = array(
+			"maps_dir" => array( 
+				'type' => 'text',
+				'desc' => 'Map Directory',
+				'default' => "{$upload_dir['basedir']}/maps",
+			),
+			"maps_url" => array( 
+				'type' => 'text',
+				'desc' => 'Map URL',
+				'default' => "{$upload_dir['baseurl']}/maps",
+			),
+			"qfont" => array( 
+				'type' => 'checkbox',
+				'desc' => 'Convert QFont to Unicode',
+				'default' => "1",
+			),
+		);
+		
+		foreach ( self::$options as $key => &$val )
+			add_option(self::option_key($key),$val["default"]);
+			
+		DpStringFunc::$convert_qfont = (int)get_option(self::option_key('qfont'));
 	}
 
 	function admin_init()
 	{
-		register_setting( $this->id, $this->id, array($this,'sanitize') );
+		//register_setting( $this->id, $this->id, array($this,'sanitize') );
 	
 		add_settings_section(
 			'xonpress_section', 
@@ -28,21 +61,19 @@ class Xonpress_Settings
 			$this->id
 		);
 
-		add_settings_field( 
-			'xonpress_maps_dir', 
-			'Map Directory', 
-			array($this,'render_xonpress_maps_dir'), 
-			$this->id, 
-			'xonpress_section' 
-		);
-
-		add_settings_field( 
-			'xonpress_maps_url', 
-			'Map URL', 
-			array($this,'render_xonpress_maps_url'),
-			$this->id, 
-			'xonpress_section' 
-		);
+		foreach ( self::$options as $key => $val )
+		{
+			register_setting( $this->id, self::option_key($key),
+				function($input) use ($val) { return $this->sanitize($input,$val); } 
+			);
+			add_settings_field(
+				self::$prefix.'['.$key.']', 
+				$val['desc'], 
+				function() use($key) { $this->render_input($key); }, 
+				$this->id, 
+				'xonpress_section' 
+			);
+		}
 	}
 	
 	function admin_menu()
@@ -76,43 +107,50 @@ class Xonpress_Settings
 		<?php
 	}
 	
-	function sanitize( $input )
+	private function sanitize( $input, $val )
 	{
-		$upload_dir = wp_upload_dir();
-		$clean_input = array();
-		
-		if ( isset($input['xonpress_maps_url']) )
+		switch ( $val['type'] )
 		{
-			$string = trim($input['xonpress_maps_url']);
-			if ( $string == "" )
-				$string = "{$upload_dir['baseurl']}/maps";
-			$clean_input['xonpress_maps_url'] = $string;
+			case 'checkbox':
+				return $input ? 1 : 0;
+			case 'text':
+				$string = trim($input);
+				if ( $string == "" )
+					$string = $val["default"];
+				return $string;
 		}
-		
-		if ( isset($input['xonpress_maps_dir']) )
-		{
-			$string = trim($input['xonpress_maps_dir']);
-			if ( $string == "" )
-				$string = "{$upload_dir['basedir']}/maps";
-			$clean_input['xonpress_maps_dir'] = $string;
-		}
-		
-		return $clean_input;
+		return $input;
 	}
 	
-	function render_field($name)
+	private function render_input_text($name)
 	{
 		$value = esc_attr(get_option($name));
 		echo "<input type='text' id='$name' name='$name' value='$value' />";
 	}
 	
-	function render_xonpress_maps_dir()
+	private function render_input_checkbox($name)
 	{
-		$this->render_field('xonpress_maps_dir');
+		echo "<input type='checkbox' id='$name' name='$name' ";
+		if ( (int)get_option($name) )
+			echo "checked='checked' ";
+		echo "/>";
 	}
 	
-	function render_xonpress_maps_url()
+	private function render_input($key)
 	{
-		$this->render_field('xonpress_maps_url');
+		if ( isset(self::$options[$key]) )
+		{
+			$option_key = self::option_key($key);
+			switch ( self::$options[$key]['type'] )
+			{
+				case 'checkbox':
+					$this->render_input_checkbox($option_key);
+					break;
+				case 'text':
+				default:
+					$this->render_input_text($option_key);
+					break;
+			}
+		}
 	}
 }

@@ -284,7 +284,7 @@ class DarkPlaces_Singleton
 
 			foreach ( $status["players"] as $player )
 				$players->data_row( array (
-					DpStringFunc::string_dp2html($player->name),
+					new HTML_TableCell(DpStringFunc::string_dp2html($player->name), false, array('class'=>"{$css_prefix}player_name")),
 					$player->score == -666 ? "spectator" : $player->score,
 					$player->ping != 0 ? $player->ping : "bot",
 				), false );
@@ -394,6 +394,7 @@ class DpStringFunc
 	private $open = false;
 	public $min_luma = 0;
 	public $max_luma = 0.8;
+	static $convert_qfont = true;
 	
 	function html_close() 
 	{
@@ -489,6 +490,9 @@ class DpStringFunc
 	 */
 	static function string_dp_convert($string)
 	{
+		if ( !self::$convert_qfont )
+			return $string;
+
 		$out = "";
 		
 		$unicode = array();        
