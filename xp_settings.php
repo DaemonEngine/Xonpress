@@ -22,6 +22,12 @@ class Xonpress_Settings
 	{
 		return self::$prefix.'_'.$key;
 	}
+	
+	static function get_option($name)
+	{
+		return get_option(self::option_key($name));
+	}
+	
 	static function init()
 	{
 		$upload_dir = wp_upload_dir();
@@ -47,7 +53,7 @@ class Xonpress_Settings
 		foreach ( self::$options as $key => &$val )
 			add_option(self::option_key($key),$val["default"]);
 			
-		DpStringFunc::$convert_qfont = (int)get_option(self::option_key('qfont'));
+		DpStringFunc::$convert_qfont = (int)self::get_option('qfont');
 	}
 
 	function admin_init()

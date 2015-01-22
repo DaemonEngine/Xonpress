@@ -51,15 +51,21 @@ $mapinfo, which is an instance of Mapinfo.
  * screenshot  Explicit screenshot URL (otherwise detected automatically)
  
 == Options ==
+All options are prefixed by xonpress_settings_ and can be set in
+the admin area under Xonpress > Settings
 
-= xonpress_maps_dir =
+= maps_dir =
 
 Base path to retrieve map information, screenshots and mapinfo are searched in
 the subdirectory /maps while pk3 files are searched directly here.
 
-= xonpress_maps_url =
+= maps_url =
 
 URL corresponding to xonpress_maps_dir
+
+= qfont =
+
+Whether special darkplaces characters should be translated into Unicode (Default: 1)
 
 == Theme Requirements ==
 

@@ -40,8 +40,8 @@ function xonpress_screenshot( $attributes )
 	if ( !$status["error"] )
 	{
 		$image = strtolower($status["mapname"]).".jpg";
-		if ( file_exists(get_option('xonpress_maps_dir')."/maps/$image") )
-			$image_url = get_option('xonpress_maps_url')."/maps/$image";
+		if ( file_exists(Xonpress_Settings::get_option('maps_dir')."/maps/$image") )
+			$image_url = Xonpress_Settings::get_option('maps_url')."/maps/$image";
 	}
 		
 	return "<img class='{$attributes['class']}' ".
@@ -79,8 +79,8 @@ function xonpress_mapinfo( $attributes )
 	global $mapinfo;
 	$mapinfo = new Mapinfo();
 	
-	$maps_url = get_option('xonpress_maps_url');
-	$maps_dir = get_option('xonpress_maps_dir');
+	$maps_url = Xonpress_Settings::get_option('maps_url');
+	$maps_dir = Xonpress_Settings::get_option('maps_dir');
 	
 	if ( $attributes['mapinfo'] )
 		$mapinfo->load_file("$maps_dir/maps/{$attributes['mapinfo']}");

@@ -28,9 +28,9 @@
  */
 
 require_once('xp_darkplaces.php');
+require_once('xp_settings.php');
 require_once('xp_shortcodes.php');
 require_once('xp_widgets.php');
-require_once('xp_settings.php');
 
 
 function xonpress_initialize()
