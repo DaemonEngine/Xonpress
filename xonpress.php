@@ -36,7 +36,7 @@ require_once('xp_widgets.php');
 function xonpress_initialize()
 {
 	DarkPlaces_ConnectionWp::create_table();
-	Xonpress_Settings::set_defaults();
+	Xonpress_Settings::init();
 }
 
 
