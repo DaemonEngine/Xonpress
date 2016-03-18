@@ -28,7 +28,7 @@ function xonpress_status( $attributes )
 		'port' => 26000,
 		'public_host' => '',
 		'stats_url' => '',
-		'protocol' => 'xon'
+		'protocol' => 'xon',
 	), $attributes );
 
 	return DarkPlaces()->status_html(
@@ -45,9 +45,10 @@ function xonpress_players( $attributes )
 	$attributes = shortcode_atts( array (
 		'ip'   => '127.0.0.1',
 		'port' => 26000,
+                'protocol' => 'xon',
 	), $attributes );
 
-	return DarkPlaces()->players_html( $attributes["ip"], $attributes["port"] );
+	return DarkPlaces()->players_html( $attributes["protocol"], $attributes["ip"], $attributes["port"] );
 }
 
 function xonpress_screenshot( $attributes )
@@ -56,9 +57,10 @@ function xonpress_screenshot( $attributes )
 		'ip'        => '127.0.0.1',
 		'port'      => 26000,
 		'class'     => 'xonpress_screenshot',
+                'protocol' => 'xon',
 	), $attributes );
 
-	$status = DarkPlaces()->status( $attributes["ip"], $attributes["port"] );
+	$status = DarkPlaces()->status( $attributes["protocol"], $attributes["ip"], $attributes["port"] );
 	
 	$image_url = get_stylesheet_directory_uri()."/img/noscreenshot.png";
 		
@@ -80,6 +82,7 @@ function xonpress_player_number ( $attributes )
 	$attributes = shortcode_atts( array (
 		'ip'        => '127.0.0.1',
 		'port'      => 26000,
+                'protocol' => 'xon',
 	), $attributes );
 
 	return DarkPlaces()->player_number( $attributes["ip"], $attributes["port"] );

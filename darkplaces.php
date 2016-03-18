@@ -39,6 +39,7 @@ class Darkplaces_Protocol
 	function normalize_status($status_array)
 	{
 		$status_array["server.name"] = $status_array["hostname"];
+		return $status_array;
 	}
 }
 
@@ -62,6 +63,7 @@ class Daemon_Protocol
 	function normalize_status($status_array)
 	{
 		$status_array["server.name"] = $status_array["sv_hostname"];
+		return $status_array;
 	}
 }
 
@@ -77,9 +79,9 @@ class Engine_Connection
 	public $port;
 	protected $socket;
 
-	function __construct($host="127.0.0.1", $port=null)
+	function __construct($protocol, $host="127.0.0.1", $port=null)
 	{
-		$this->protocol = new Darkplaces_Protocol();
+		$this->protocol = $protocol;
 		$this->host = $host;
 		$this->port = $port != null ? $port : $this->protocol->default_port;
 	}
@@ -172,9 +174,7 @@ class Engine_Connection
 			}
 		}
 
-		$this->protocol->normalize_status($result);
-		
-		return $result;
+		return $this->protocol->normalize_status($result);
 	}
 
 }
@@ -188,9 +188,9 @@ abstract class Engine_ConnectionCached extends Engine_Connection
 	protected $dont_cache = array('getchallenge');
 	public $cache_errors = false;
 
-	function __construct($host="127.0.0.1", $port=null)
+	function __construct($protocol, $host="127.0.0.1", $port=null)
 	{
-		parent::__construct($host, $port);
+		parent::__construct($protocol, $host, $port);
 	}
 	
 	function key_suggestion($request)
@@ -222,9 +222,9 @@ abstract class Engine_ConnectionCached extends Engine_Connection
 
 class Engine_Connection_Factory
 {
-	function build($host, $port)
+	function build($protocol, $host, $port)
 	{
-		return new Engine_Connection($host,$port);
+		return new Engine_Connection($protocol, $host, $port);
 	}
 }
 
@@ -259,8 +259,8 @@ class DarkPlaces_Singleton
 	{
 		if ( is_object($protocol) )
 			return $protocol;
-		if ( isset($this->protocols[$name]) )
-			return $this->protocols[$name];
+		if ( isset($this->protocols[$protocol]) )
+			return $this->protocols[$protocol];
 		return $this->protocols["xon"];
 	}
 	
@@ -311,8 +311,8 @@ class DarkPlaces_Singleton
 
 		$server_name = DpStringFunc::string_dp2html($status["server.name"]);
 		if ( $stats_url )
-			$server_name = "<a href='$stats_url'>$server.name</a>";
-		$status_table->simple_row("Server", $server.name, false);
+			$server_name = "<a href='$stats_url'>$server_name</a>";
+		$status_table->simple_row("Server", $server_name, false);
 
 		if ( $status["error"] )
 		{

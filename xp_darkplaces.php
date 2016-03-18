@@ -84,9 +84,9 @@ class Engine_ConnectionWp extends Engine_ConnectionCached
 
 class Engine_ConnectionWp_Factory
 {
-	function build($host, $port)
+	function build($protocol, $host, $port)
 	{
-		return new Engine_ConnectionWp($host,$port);
+		return new Engine_ConnectionWp($protocol, $host, $port);
 	}
 }
 
