@@ -20,7 +20,7 @@
 
 require_once("darkplaces.php");
 
-class DarkPlaces_ConnectionWp extends DarkPlaces_ConnectionCached
+class Engine_ConnectionWp extends Engine_ConnectionCached
 {
 	const table_name = 'xonpress_cache';
 	protected $cache_minutes = 1;
@@ -65,7 +65,7 @@ class DarkPlaces_ConnectionWp extends DarkPlaces_ConnectionCached
 	static function create_table()
 	{
 		global $wpdb;
-		$table = $wpdb->prefix.DarkPlaces_ConnectionWp::table_name;
+		$table = $wpdb->prefix.Engine_ConnectionWp::table_name;
 		
 		$charset_collate = $wpdb->get_charset_collate(); // NOTE: Requires WordPress 3.5
 		$sql = "CREATE TABLE $table (
@@ -82,12 +82,12 @@ class DarkPlaces_ConnectionWp extends DarkPlaces_ConnectionCached
 	}
 }
 
-class DarkPlaces_ConnectionWp_Factory
+class Engine_ConnectionWp_Factory
 {
 	function build($host, $port)
 	{
-		return new DarkPlaces_ConnectionWp($host,$port);
+		return new Engine_ConnectionWp($host,$port);
 	}
 }
 
-DarkPlaces()->connection_factory = new DarkPlaces_ConnectionWp_Factory();
+DarkPlaces()->connection_factory = new Engine_ConnectionWp_Factory();

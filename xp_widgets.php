@@ -65,7 +65,7 @@ class Xonpress_ServerTable extends WP_Widget
 					$table->simple_row("$host:$port", 0);
 				else
 					$table->simple_row(
-						DpStringFunc::string_dp2none($status["hostname"]),
+						DpStringFunc::string_dp2none($status["server.name"]),
 						DarkPlaces()->player_number($status)
 					);
 			}

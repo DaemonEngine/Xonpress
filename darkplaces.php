@@ -19,29 +19,69 @@
  */
 require_once("table.php");
 
-/**
- * \brief Basic connection to darkplaces
- */
-class DarkPlaces_Connection
+class Darkplaces_Protocol
 {
-	protected $dpheader = "\xff\xff\xff\xff";
-	protected $dpresponses = array(
+	public $header = "\xff\xff\xff\xff";
+	public $responses = array(
 		"rcon" => "n",
 		"srcon" => "n",
 		"getchallenge" => "challenge ",
 		"getinfo" => "infoResponse\n",
 		"getstatus" => "statusResponse\n",
 	);
-	protected $dpreceivelen = 1399;
+	public $receive_len = 1399;
+	public $default_port = 26000;
+
+
+	/**
+	 * \brief Populates high-level keys
+	 */
+	function normalize_status($status_array)
+	{
+		$status_array["server.name"] = $status_array["hostname"];
+	}
+}
+
+class Daemon_Protocol
+{
+	public $header = "\xff\xff\xff\xff";
+	public $responses = array(
+		"rcon" => "print\n",
+		"srcon" => "print\n",
+		"getchallenge" => "challengeResponse ",
+		"getinfo" => "infoResponse\n",
+		"getstatus" => "statusResponse\n",
+	);
+	public $receive_len = 1399;
+	public $default_port = 27960;
+
+
+	/**
+	 * \brief Populates high-level keys
+	 */
+	function normalize_status($status_array)
+	{
+		$status_array["server.name"] = $status_array["sv_hostname"];
+	}
+}
+
+
+/**
+ * \brief Basic connection to darkplaces
+ */
+class Engine_Connection
+{
+	protected $protocol;
 
 	public $host;
 	public $port;
 	protected $socket;
 
-	function __construct($host="127.0.0.1", $port=26000) 
+	function __construct($host="127.0.0.1", $port=null)
 	{
+		$this->protocol = new Darkplaces_Protocol();
 		$this->host = $host;
-		$this->port = $port;
+		$this->port = $port != null ? $port : $this->protocol->default_port;
 	}
 
 	function socket()
@@ -78,18 +118,18 @@ class DarkPlaces_Connection
 		if ( !$this->socket() ) return false;
 		
 		$request_command = strtok($request," ");
-		$contents = $this->dpheader.$request;
+		$contents = $this->protocol->header.$request;
 		
 		socket_sendto($this->socket, $contents, strlen($contents), 
 			0, $this->host, $this->port);
 		
 		$received = "";
-		socket_recvfrom($this->socket, $received, $this->dpreceivelen,
+		socket_recvfrom($this->socket, $received, $this->protocol->receive_len,
 			0, $this->host, $this->port);
 		
-		$header = $this->dpheader;
-		if ( !empty($this->dpresponses[$request_command]) )
-			$header .= $this->dpresponses[$request_command];
+		$header = $this->protocol->header;
+		if ( !empty($this->protocol->responses[$request_command]) )
+			$header .= $this->protocol->responses[$request_command];
 		if ( $header != substr($received, 0, strlen($header)) )
 			return false;
 		return substr($received, strlen($header));
@@ -98,18 +138,23 @@ class DarkPlaces_Connection
 	function status() 
 	{
 		$status_response = $this->request("getstatus");
+
+		$result = array (
+			"error" => false,
+			"host" => $this->host,
+			"port" => $this->port,
+			"server.name" => "{$this->host}:{$this->port}",
+		);
+
 		if ( !$status_response )
-			return array("error" => true);
+		{
+			$result["error"] = true;
+			return $result;
+		}
 		
 		$lines = explode("\n",trim($status_response,"\n"));
 		
 		$info = explode("\\",trim($lines[0],"\\"));
-		
-		$result = array ( 
-			"error" => false,
-			"host" => $this->host,
-			"port" => $this->port,
-		);
 		
 		for ( $i = 0; $i < count($info)-1; $i += 2 )
 			$result[$info[$i]] = $info[$i+1];
@@ -126,20 +171,24 @@ class DarkPlaces_Connection
 				$result["players"][$i-1] = $player;
 			}
 		}
+
+		$this->protocol->normalize_status($result);
 		
 		return $result;
 	}
+
 }
+
 
 /**
  * \brief Connection to darkplaces which caches queries to database (abstract base)
  */
-abstract class DarkPlaces_ConnectionCached extends DarkPlaces_Connection
+abstract class Engine_ConnectionCached extends Engine_Connection
 {
 	protected $dont_cache = array('getchallenge');
 	public $cache_errors = false;
 
-	function __construct($host="127.0.0.1", $port=26000) 
+	function __construct($host="127.0.0.1", $port=null)
 	{
 		parent::__construct($host, $port);
 	}
@@ -171,11 +220,11 @@ abstract class DarkPlaces_ConnectionCached extends DarkPlaces_Connection
 	}
 }
 
-class DarkPlaces_Connection_Factory
+class Engine_Connection_Factory
 {
 	function build($host, $port)
 	{
-		return new DarkPlaces_Connection($host,$port);
+		return new Engine_Connection($host,$port);
 	}
 }
 
@@ -189,7 +238,11 @@ class DarkPlaces_Singleton
 	
 	protected function __construct() 
 	{
-		$this->connection_factory = new DarkPlaces_Connection_Factory();
+		$this->connection_factory = new Engine_Connection_Factory();
+		$this->protocols = array(
+			"xon" => new Darkplaces_Protocol(),
+			"unv" => new Daemon_Protocol(),
+		);
 	}
 	
 	protected function __clone() {}
@@ -201,19 +254,29 @@ class DarkPlaces_Singleton
 			$instance = new DarkPlaces_Singleton();
 		return $instance;
 	}
+
+	function protocol($protocol)
+	{
+		if ( is_object($protocol) )
+			return $protocol;
+		if ( isset($this->protocols[$name]) )
+			return $this->protocols[$name];
+		return $this->protocols["xon"];
+	}
 	
 	// "Factory" that ensures a single instance for each server (per page load)
-	protected function get_connection($host, $port)
+	protected function get_connection($protocol, $host, $port)
 	{
 		$server = "$host:$port";
 		if (isset($this->connections[$server]))
 			return $this->connections[$server];
-		return $this->connections[$server] = $this->connection_factory->build($host,$port); 
+		$connection = $this->connection_factory->build($this->protocol($protocol), $host, $port);
+		return $this->connections[$server] = $connection;
 	}
 	
-	function status($host="127.0.0.1", $port=26000)
+	function status($protocol="xon", $host="127.0.0.1", $port=null)
 	{
-		$conn = $this->get_connection($host,$port);
+		$conn = $this->get_connection($protocol, $host, $port);
 		if ( !empty($conn->cached_status) )
 			return $conn->cached_status;
 		return $conn->cached_status = $conn->status();
@@ -225,11 +288,8 @@ class DarkPlaces_Singleton
 	 * \param $status Status array or host name/address
 	 * \param $port Ignored or port number when \c $status is a host
 	 */
-	function player_number($status, $port=null)
+	function player_number($status)
 	{
-		if ( is_string($status) && isset($port) )
-			return $this->player_number($this->status($host, $port));
-			
 		if ( $status['error'] )
 			return 0;
 		else
@@ -237,33 +297,32 @@ class DarkPlaces_Singleton
 					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "");
 	}
 	
-	function status_html($host = "127.0.0.1", $port = 26000, 
+	function status_html($protocol = "xon", $host = "127.0.0.1", $port = null,
 		$public_host = null, $stats_url = null, $css_prefix="dptable_")
 	{
-		$status = $this->status($host, $port);
+		if ( $port == null )
+			$port = $this->protocol($protocol)->default_port;
+
+		$status = $this->status($protocol, $host, $port);
 		
 		if ( empty($public_host) ) $public_host = $host;
 
 		$status_table = new HTML_Table("{$css_prefix}status");
 
+		$server_name = DpStringFunc::string_dp2html($status["server.name"]);
+		if ( $stats_url )
+			$server_name = "<a href='$stats_url'>$server.name</a>";
+		$status_table->simple_row("Server", $server.name, false);
 
 		if ( $status["error"] )
 		{
-			$status_table->simple_row("Server","$public_host:$port");
 			$status_table->simple_row("Error", 
 				"<span class='{$css_prefix}error'>Could not retrieve server info</span>", 
 				false);
-			if ( $stats_url )
-				$status_table->simple_row("Stats","<a href='$stats_url'>$stats_url</a>");
 		}
 		else
 		{
-			$server_name = DpStringFunc::string_dp2html($status["hostname"]);
-			if ( $stats_url )
-				$server_name = "<a href='$stats_url'>$server_name</a>";
-			$status_table->simple_row("Server", $server_name, false);
 			$status_table->simple_row("Address","$public_host:$port");
-				
 			$status_table->simple_row("Map", $status["mapname"]);
 			$status_table->simple_row("Players", $this->player_number($status));
 		}
@@ -272,9 +331,9 @@ class DarkPlaces_Singleton
 	}
 	
 	
-	function players_html($host = "127.0.0.1", $port = 26000, $css_prefix="dptable_")
+	function players_html($protocol = "xon", $host = "127.0.0.1", $port = 26000, $css_prefix="dptable_")
 	{
-		$status = $this->status($host, $port);
+		$status = $this->status($protocol, $host, $port);
 		
 		if (!empty($status["players"]))
 		{
@@ -460,7 +519,7 @@ class DpStringFunc
 	{
 		$functor = new DpStringFunc();
 		
-		return preg_replace_callback(self::$color_regex,$functor,
+		return preg_replace_callback(self::$color_regex, $functor,
 			self::string_dp_convert($string)).$functor->html_close();
 	}
 	
@@ -578,7 +637,7 @@ class Mapinfo
 	{
 		if (file_exists($file))
 		{
-			$this->name = basename($file,".mapinfo");
+			$this->name = basename($file, ".mapinfo");
 			$lines = file($file);
 			$this->gametypes = array();
 			foreach ( $lines as $line )

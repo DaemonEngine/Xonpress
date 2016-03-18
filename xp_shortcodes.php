@@ -28,10 +28,16 @@ function xonpress_status( $attributes )
 		'port' => 26000,
 		'public_host' => '',
 		'stats_url' => '',
+		'protocol' => 'xon'
 	), $attributes );
 
-	return DarkPlaces()->status_html( $attributes["ip"], $attributes["port"],
-		$attributes['public_host'], $attributes['stats_url'] );
+	return DarkPlaces()->status_html(
+		$attributes["protocol"],
+		$attributes["ip"],
+		$attributes["port"],
+		$attributes['public_host'],
+		$attributes['stats_url']
+	);
 }
 
 function xonpress_players( $attributes )
