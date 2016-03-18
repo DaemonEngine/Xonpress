@@ -1,9 +1,8 @@
 <?php
-
 /**
  * \file
  * \author Mattia Basaglia
- * \copyright Copyright 2013-2015 Mattia Basaglia
+ * \copyright Copyright 2013-2016 Mattia Basaglia
  * \section License
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
