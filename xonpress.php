@@ -27,7 +27,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-require_once('xp_darkplaces.php');
+require_once('xp_engine.php');
 require_once('xp_settings.php');
 require_once('xp_shortcodes.php');
 require_once('xp_widgets.php');

@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-require_once("darkplaces.php");
+require_once("engine.php");
 
 class Engine_ConnectionWp extends Engine_ConnectionCached
 {
@@ -90,4 +90,4 @@ class Engine_ConnectionWp_Factory
 	}
 }
 
-DarkPlaces()->connection_factory = new Engine_ConnectionWp_Factory();
+Controller()->connection_factory = new Engine_ConnectionWp_Factory();

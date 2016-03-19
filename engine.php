@@ -117,7 +117,7 @@ class Engine_Address
 
 
 /**
- * \brief Basic connection to darkplaces
+ * \brief Basic connection to a game engine
  */
 class Engine_Connection
 {
@@ -232,7 +232,7 @@ class Engine_Connection
 
 
 /**
- * \brief Connection to darkplaces which caches queries to database (abstract base)
+ * \brief Connection to a game engine which caches queries to database (abstract base)
  */
 abstract class Engine_ConnectionCached extends Engine_Connection
 {
@@ -280,9 +280,9 @@ class Engine_Connection_Factory
 }
 
 /**
- * \brief Static access to darkplaces servers and caches results
+ * \brief Static access to game engine servers and caches results
  */
-class DarkPlaces_Singleton
+class Controller_Singleton
 {
 	private $connections = array();
 	public $connection_factory;
@@ -298,7 +298,7 @@ class DarkPlaces_Singleton
 	{
 		static $instance = null;
 		if ( !$instance ) 
-			$instance = new DarkPlaces_Singleton();
+			$instance = new Controller_Singleton();
 		return $instance;
 	}
 	
@@ -389,9 +389,9 @@ class DarkPlaces_Singleton
 	}
 }
 
-function DarkPlaces()
+function Controller()
 {
-	return DarkPlaces_Singleton::instance();
+	return Controller_Singleton::instance();
 }
 
 

@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 class Xonpress_ServerTable extends WP_Widget 
 {
 	/**
@@ -54,13 +55,13 @@ class Xonpress_ServerTable extends WP_Widget
 		foreach ( $servers as $server )
 		{
 			$address = Engine_Address($server);
-			$status = DarkPlaces()->status($address);
+			$status = Controller()->status($address);
 			if ( $status['error'] )
 				$table->simple_row("{$address->host}:{$address->port}", 0);
 			else
 				$table->simple_row(
 					DpStringFunc::string_dp2none($status["server.name"]),
-					DarkPlaces()->player_number($status)
+					Controller()->player_number($status)
 				);
 		}
 		

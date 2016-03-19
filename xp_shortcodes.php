@@ -21,7 +21,7 @@
  *
  */
 
-require_once("darkplaces.php");
+require_once("engine.php");
 
 function xonpress_status( $attributes )
 {
@@ -31,7 +31,7 @@ function xonpress_status( $attributes )
 		'stats_url' => '',
 	), $attributes );
 
-	return DarkPlaces()->status_html(
+	return Controller()->status_html(
 		$attributes["server"],
 		$attributes['public_host'],
 		$attributes['stats_url']
@@ -44,7 +44,7 @@ function xonpress_players( $attributes )
 		'server'   => 'xon://127.0.0.1:26000',
 	), $attributes );
 
-	return DarkPlaces()->players_html( $attributes["server"] );
+	return Controller()->players_html( $attributes["server"] );
 }
 
 function xonpress_screenshot( $attributes )
@@ -54,7 +54,7 @@ function xonpress_screenshot( $attributes )
 		'class'     => 'xonpress_screenshot',
 	), $attributes );
 
-	$status = DarkPlaces()->status( $attributes["server"] );
+	$status = Controller()->status( $attributes["server"] );
 	
 	$image_url = get_stylesheet_directory_uri()."/img/noscreenshot.png";
 		
@@ -77,7 +77,7 @@ function xonpress_player_number ( $attributes )
 		'server'   => 'xon://127.0.0.1:26000',
 	), $attributes );
 
-	return DarkPlaces()->player_number( $attributes["server"] );
+	return Controller()->player_number( $attributes["server"] );
 }
 
 function xonpress_mapinfo( $attributes ) 
