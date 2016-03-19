@@ -54,8 +54,8 @@ class Engine_ConnectionWp extends Engine_ConnectionCached
 			INSERT INTO $table (server, port, query, response) 
 			VALUE ( %s, %d, %s, %s )
 			ON DUPLICATE KEY UPDATE response = %s",
-			$this->host,
-			$this->port,
+			$this->address->host,
+			$this->address->port,
 			$request,
 			$response, 
 			$response
