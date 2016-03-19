@@ -255,8 +255,8 @@ class Engine_Address
 
 class EngineSocket
 {
-    static $default_write_timeout = 1000; // 1 millisecond
-    static $default_read_timeout = 40000; // 40 milliseconds
+    static $default_write_timeout =  1000; // 1 millisecond
+    static $default_read_timeout = 500000; // 500 milliseconds
     private $socket = null;
 
     function socket()
@@ -575,7 +575,6 @@ class Controller_Singleton
         $table = new HTML_Table("{$css_prefix}server_list");
         $headers = ["Server", "Version", "Map", "Players", "Links"];
         $table->header_row($headers);
-        print_r($addresses);
         foreach ( $addresses as $address )
         {
             $address = Engine_Address::address($address);
