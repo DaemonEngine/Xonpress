@@ -25,9 +25,9 @@ class Engine_ConnectionWp extends Engine_ConnectionCached
 	const table_name = 'xonpress_cache';
 	protected $cache_minutes = 1;
 
-	function __construct($host="127.0.0.1", $port=26000) 
+	function __construct(Engine_Address $address)
 	{
-		parent::__construct($host, $port);
+		parent::__construct($address);
 	}
 	
 	protected function get_cached_request($request)
@@ -40,8 +40,8 @@ class Engine_ConnectionWp extends Engine_ConnectionCached
 			AND port = %d 
 			AND query = %s 
 			AND time > TIMESTAMPADD(minute,%d, CURRENT_TIMESTAMP)",
-			$this->host,
-			$this->port,
+			$this->address->host,
+			$this->address->port,
 			$request,
 			-(int)$this->cache_minutes
 		));
@@ -84,9 +84,9 @@ class Engine_ConnectionWp extends Engine_ConnectionCached
 
 class Engine_ConnectionWp_Factory
 {
-	function build($protocol, $host, $port)
+	function build($address)
 	{
-		return new Engine_ConnectionWp($protocol, $host, $port);
+		return new Engine_ConnectionWp(Engine_Address::address($address));
 	}
 }
 

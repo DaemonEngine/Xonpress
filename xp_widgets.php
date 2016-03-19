@@ -20,9 +20,6 @@
 
 class Xonpress_ServerTable extends WP_Widget 
 {
-
-	static $server_regex = '/([^:]*)(?::([0-9]*))/';
-
 	/**
 	 * Sets up the widgets name etc
 	 */
@@ -56,19 +53,15 @@ class Xonpress_ServerTable extends WP_Widget
 		
 		foreach ( $servers as $server )
 		{
-			if ( preg_match(self::$server_regex, $server, $matches) )
-			{
-				$host = empty($matches[1]) ? '127.0.0.1' : $matches[1];
-				$port = empty($matches[2]) ? 26000 : $matches[2];
-				$status = DarkPlaces()->status($host,$port);
-				if ( $status['error'] )
-					$table->simple_row("$host:$port", 0);
-				else
-					$table->simple_row(
-						DpStringFunc::string_dp2none($status["server.name"]),
-						DarkPlaces()->player_number($status)
-					);
-			}
+			$address = Engine_Address($server);
+			$status = DarkPlaces()->status($address);
+			if ( $status['error'] )
+				$table->simple_row("{$address->host}:{$address->port}", 0);
+			else
+				$table->simple_row(
+					DpStringFunc::string_dp2none($status["server.name"]),
+					DarkPlaces()->player_number($status)
+				);
 		}
 		
 		echo $table;

@@ -67,23 +67,68 @@ class Daemon_Protocol
 	}
 }
 
+class Engine_Address
+{
+	public $protocol;
+	public $host;
+	public $port;
+
+	function __construct($protocol, $host, $port)
+	{
+		if ( is_string($protocol) )
+			$this->protocol(Engine_Address::parse_scheme($protocol));
+		else
+			$this->protocol = $protocol;
+		$this->host = $host;
+		$this->port = $port != null ? $port : $this->protocol->default_port;
+	}
+
+	static function parse($url)
+	{
+		$parsed = parse_url($url);
+
+		$protocol = Engine_Address::parse_scheme(
+			isset($parsed["scheme"]) ? $parsed["scheme"] : ""
+		);
+
+		$host = isset($parsed["host"]) ? $parsed["host"] : $parsed["path"];
+		if ( empty($host) )
+			$host = "127.0.0.1";
+
+		$port = isset($parsed["port"]) ? $parsed["port"] : null;
+
+		return new Engine_Address($protocol, $host, $port);
+	}
+
+	static function parse_scheme($name)
+	{
+		if ( $name == "unv" )
+			return new Daemon_Protocol();
+		return new Darkplaces_Protocol();
+	}
+
+	static function address($obj)
+	{
+		if ( is_object($obj) && $obj instanceof Engine_Address )
+			return $obj;
+		return Engine_Address::parse($obj);
+	}
+}
+
 
 /**
  * \brief Basic connection to darkplaces
  */
 class Engine_Connection
 {
-	protected $protocol;
-
-	public $host;
-	public $port;
+	static $default_write_timeout = 1000;
+	static $default_read_timeout = 40000;
+	public $address;
 	protected $socket;
 
-	function __construct($protocol, $host="127.0.0.1", $port=null)
+	function __construct(Engine_Address $address)
 	{
-		$this->protocol = $protocol;
-		$this->host = $host;
-		$this->port = $port != null ? $port : $this->protocol->default_port;
+		$this->address = $address;
 	}
 
 	function socket()
@@ -92,9 +137,12 @@ class Engine_Connection
 		{
 			$this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
 			if ( $this->socket ) {
-				socket_bind($this->socket, $this->host);
+				// socket_bind($this->socket, $this->host);
 				// default timeout = 1, 40 millisecond
-				$this->socket_timeout(1000,40000);
+				$this->socket_timeout(
+					Engine_Connection::$default_write_timeout,
+					Engine_Connection::$default_read_timeout
+				);
 			}
 		}
 		return $this->socket;
@@ -107,11 +155,13 @@ class Engine_Connection
 		if ( $receive_microseconds < 0 )
 			$receive_microseconds = $send_microseconds;
 		
-		socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO, 
-			array('sec' => 0, 'usec' => $send_microseconds));
+		if ( $send_microseconds > 0 )
+			socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO,
+				array('sec' => 0, 'usec' => $send_microseconds));
 			
-		socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, 
-			array('sec' => 0, 'usec' => $receive_microseconds));
+		if ( $receive_microseconds > 0 )
+			socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO,
+				array('sec' => 0, 'usec' => $receive_microseconds));
 		
 	}
 	
@@ -120,18 +170,19 @@ class Engine_Connection
 		if ( !$this->socket() ) return false;
 		
 		$request_command = strtok($request," ");
-		$contents = $this->protocol->header.$request;
+		$contents = $this->address->protocol->header.$request;
 		
 		socket_sendto($this->socket, $contents, strlen($contents), 
-			0, $this->host, $this->port);
+			0, $this->address->host, $this->address->port);
 		
 		$received = "";
-		socket_recvfrom($this->socket, $received, $this->protocol->receive_len,
-			0, $this->host, $this->port);
+		socket_recvfrom($this->socket, $received,
+			$this->address->protocol->receive_len,
+			0, $this->address->host, $this->address->port);
 		
-		$header = $this->protocol->header;
-		if ( !empty($this->protocol->responses[$request_command]) )
-			$header .= $this->protocol->responses[$request_command];
+		$header = $this->address->protocol->header;
+		if ( !empty($this->address->protocol->responses[$request_command]) )
+			$header .= $this->address->protocol->responses[$request_command];
 		if ( $header != substr($received, 0, strlen($header)) )
 			return false;
 		return substr($received, strlen($header));
@@ -143,9 +194,9 @@ class Engine_Connection
 
 		$result = array (
 			"error" => false,
-			"host" => $this->host,
-			"port" => $this->port,
-			"server.name" => "{$this->host}:{$this->port}",
+			"host" => $this->address->host,
+			"port" => $this->address->port,
+			"server.name" => "{$this->address->host}:{$this->address->port}",
 		);
 
 		if ( !$status_response )
@@ -174,7 +225,7 @@ class Engine_Connection
 			}
 		}
 
-		return $this->protocol->normalize_status($result);
+		return $this->address->protocol->normalize_status($result);
 	}
 
 }
@@ -188,14 +239,14 @@ abstract class Engine_ConnectionCached extends Engine_Connection
 	protected $dont_cache = array('getchallenge');
 	public $cache_errors = false;
 
-	function __construct($protocol, $host="127.0.0.1", $port=null)
+	function __construct(Engine_Address $address)
 	{
-		parent::__construct($protocol, $host, $port);
+		parent::__construct($address);
 	}
 	
 	function key_suggestion($request)
 	{
-		return "{$this->host}:{$this->port}:$request";
+		return "{$this->address->host}:{$this->address->port}:$request";
 	}
 	
 	abstract protected function get_cached_request($request);
@@ -222,9 +273,9 @@ abstract class Engine_ConnectionCached extends Engine_Connection
 
 class Engine_Connection_Factory
 {
-	function build($protocol, $host, $port)
+	function build($address)
 	{
-		return new Engine_Connection($protocol, $host, $port);
+		return new Engine_Connection(Engine_Address::address($address));
 	}
 }
 
@@ -239,10 +290,6 @@ class DarkPlaces_Singleton
 	protected function __construct() 
 	{
 		$this->connection_factory = new Engine_Connection_Factory();
-		$this->protocols = array(
-			"xon" => new Darkplaces_Protocol(),
-			"unv" => new Daemon_Protocol(),
-		);
 	}
 	
 	protected function __clone() {}
@@ -254,29 +301,21 @@ class DarkPlaces_Singleton
 			$instance = new DarkPlaces_Singleton();
 		return $instance;
 	}
-
-	function protocol($protocol)
-	{
-		if ( is_object($protocol) )
-			return $protocol;
-		if ( isset($this->protocols[$protocol]) )
-			return $this->protocols[$protocol];
-		return $this->protocols["xon"];
-	}
 	
 	// "Factory" that ensures a single instance for each server (per page load)
-	protected function get_connection($protocol, $host, $port)
+	function get_connection($address)
 	{
-		$server = "$host:$port";
-		if (isset($this->connections[$server]))
-			return $this->connections[$server];
-		$connection = $this->connection_factory->build($this->protocol($protocol), $host, $port);
-		return $this->connections[$server] = $connection;
+		$address = Engine_Address::address($address);
+		$key = "{$address->host}:{$address->port}";
+		if (isset($this->connections[$key]))
+			return $this->connections[$key];
+		$connection = $this->connection_factory->build($address);
+		return $this->connections[$key] = $connection;
 	}
 	
-	function status($protocol="xon", $host="127.0.0.1", $port=null)
+	function status($address)
 	{
-		$conn = $this->get_connection($protocol, $host, $port);
+		$conn = $this->get_connection($address);
 		if ( !empty($conn->cached_status) )
 			return $conn->cached_status;
 		return $conn->cached_status = $conn->status();
@@ -297,15 +336,12 @@ class DarkPlaces_Singleton
 					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "");
 	}
 	
-	function status_html($protocol = "xon", $host = "127.0.0.1", $port = null,
-		$public_host = null, $stats_url = null, $css_prefix="dptable_")
+	function status_html($address, $public_host=null, $stats_url=null, $css_prefix="dptable_")
 	{
-		if ( $port == null )
-			$port = $this->protocol($protocol)->default_port;
-
-		$status = $this->status($protocol, $host, $port);
+		$address = Engine_Address::address($address);
+		$status = $this->status($address);
 		
-		if ( empty($public_host) ) $public_host = $host;
+		if ( empty($public_host) ) $public_host = $address->host;
 
 		$status_table = new HTML_Table("{$css_prefix}status");
 
@@ -322,7 +358,7 @@ class DarkPlaces_Singleton
 		}
 		else
 		{
-			$status_table->simple_row("Address","$public_host:$port");
+			$status_table->simple_row("Address","$public_host:{$address->port}");
 			$status_table->simple_row("Map", $status["mapname"]);
 			$status_table->simple_row("Players", $this->player_number($status));
 		}
@@ -331,9 +367,9 @@ class DarkPlaces_Singleton
 	}
 	
 	
-	function players_html($protocol = "xon", $host = "127.0.0.1", $port = 26000, $css_prefix="dptable_")
+	function players_html($address, $css_prefix="dptable_")
 	{
-		$status = $this->status($protocol, $host, $port);
+		$status = $this->status($address);
 		
 		if (!empty($status["players"]))
 		{
