@@ -281,11 +281,11 @@ class EngineSocket
             $receive_microseconds = $send_microseconds;
 
         if ( $send_microseconds > 0 )
-            socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO,
+            socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO,
                 array('sec' => 0, 'usec' => $send_microseconds));
 
         if ( $receive_microseconds > 0 )
-            socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO,
+            socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO,
                 array('sec' => 0, 'usec' => $receive_microseconds));
 
     }
