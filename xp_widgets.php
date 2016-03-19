@@ -54,7 +54,7 @@ class Xonpress_ServerTable extends WP_Widget
 
         foreach ( $servers as $server )
         {
-            $address = Engine_Address($server);
+            $address = Engine_Address::parse($server);
             $status = Controller()->status($address);
             $table->simple_row(
                 DpStringFunc::string_dp2none($status["server.name"]),
