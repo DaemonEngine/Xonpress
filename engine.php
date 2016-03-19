@@ -595,7 +595,7 @@ class Controller_Singleton
             $table->data_row(new HTML_TableCell(
                 $this->players_html($address),
                 false,
-                array("columnspan" => count($headers))
+                array("colspan" => count($headers))
             ), false);
 
         }
