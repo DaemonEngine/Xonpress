@@ -197,6 +197,7 @@ class Engine_Connection
 			"host" => $this->address->host,
 			"port" => $this->address->port,
 			"server.name" => "{$this->address->host}:{$this->address->port}",
+			"players" => array(),
 		);
 
 		if ( !$status_response )
@@ -214,14 +215,14 @@ class Engine_Connection
 		
 		if ( count($lines) > 1 )
 		{
-			$result["players"] = array();
 			for ( $i = 1; $i < count($lines); $i++ )
 			{
 				$player = new stdClass();
-				$player->score = strtok($lines[$i]," ");
+				$player->score = strtok($lines[$i], " ");
 				$player->ping = strtok(" ");
-				$player->name = substr(strtok("\n"),1,-1);
-				$result["players"][$i-1] = $player;
+				$player->name = substr(strtok("\n"), 1, -1);
+				$player->bot = $player->ping == 0;
+				$result["clients.players"][] = $player;
 			}
 		}
 
@@ -331,9 +332,23 @@ class Controller_Singleton
 	{
 		if ( $status['error'] )
 			return 0;
-		else
-			return "{$status['clients']}/{$status['sv_maxclients']}".
-					((int)$status['bots'] > 0 ? " ({$status['bots']} bots)": "");
+
+		$bots = 0;
+		foreach ( $status["clients.players"] as $player )
+		{
+			if ( $player->bot )
+				$bots++;
+		}
+
+		$count_string = (count($status["clients.players"]) - $bots).
+						"/{$status['sv_maxclients']}";
+
+		if ( $bots > 1 )
+			$count_string .= " ($bots bots)";
+		elseif ( $bots == 1 )
+			$count_string .= " ($bots bot)";
+
+		return $count_string;
 	}
 	
 	function status_html($address, $public_host=null, $stats_url=null, $css_prefix="dptable_")
@@ -371,16 +386,16 @@ class Controller_Singleton
 	{
 		$status = $this->status($address);
 		
-		if (!empty($status["players"]))
+		if (!empty($status["clients.players"]))
 		{
 			$players = new HTML_Table("{$css_prefix}players");
 			$players->header_row(array("Name", "Score", "Ping"));
 
-			foreach ( $status["players"] as $player )
+			foreach ( $status["clients.players"] as $player )
 				$players->data_row( array (
 					new HTML_TableCell(DpStringFunc::string_dp2html($player->name), false, array('class'=>"{$css_prefix}player_name")),
 					$player->score == -666 ? "spectator" : $player->score,
-					$player->ping != 0 ? $player->ping : "bot",
+					$player->bot ? "bot" : $player->ping,
 				), false );
 			return $players;
 		}
