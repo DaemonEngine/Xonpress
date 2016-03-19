@@ -19,17 +19,11 @@
  */
 require_once("table.php");
 
-class Darkplaces_Protocol
+class Protcol
 {
     public $header = "\xff\xff\xff\xff";
-    public $responses = array(
-        "rcon" => "n",
-        "srcon" => "n",
-        "getchallenge" => "challenge ",
-        "getinfo" => "infoResponse\n",
-        "getstatus" => "statusResponse\n",
-    );
-    public $receive_len = 1399;
+    public $responses = array();
+    public $receive_len = 1024;
     public $default_port = 26000;
     public $scheme = null;
 
@@ -39,14 +33,44 @@ class Darkplaces_Protocol
      */
     function normalize_status($status_array)
     {
+        return $status_array;
+    }
+
+    /**
+     * \brief Returns a list of addresses, as retrieved from the master
+     */
+    function server_list($address = null)
+    {
+        return [];
+    }
+
+    function default_master()
+    {
+        return null;
+    }
+}
+
+class Darkplaces_Protocol extends Protcol
+{
+    public $responses = array(
+        "rcon" => "n",
+        "srcon" => "n",
+        "getchallenge" => "challenge ",
+        "getinfo" => "infoResponse\n",
+        "getstatus" => "statusResponse\n",
+    );
+    public $receive_len = 1399;
+    public $default_port = 26000;
+
+    function normalize_status($status_array)
+    {
         $status_array["server.name"] = $status_array["hostname"];
         return $status_array;
     }
 }
 
-class Daemon_Protocol
+class Daemon_Protocol extends Protcol
 {
-    public $header = "\xff\xff\xff\xff";
     public $responses = array(
         "rcon" => "print\n",
         "srcon" => "print\n",
@@ -58,14 +82,117 @@ class Daemon_Protocol
     public $default_port = 27960;
     public $scheme = "unv";
 
-
-    /**
-     * \brief Populates high-level keys
-     */
     function normalize_status($status_array)
     {
         $status_array["server.name"] = $status_array["sv_hostname"];
         return $status_array;
+    }
+
+    function default_master()
+    {
+        return new Engine_Address($this, "master.unvanquished.net", 27950);
+    }
+
+    function server_list($address = null)
+    {
+        if ( $address == null )
+            $address = $this->default_master();
+
+        $game = "UNVANQUISHED";
+        $protocol = 86;
+        $extra_flags = "empty full";
+        $read_size = 1024;
+
+        $request = "{$this->header}getserversExt $game $protocol $extra_flags";
+
+        $socket = new EngineSocket();
+        $response = $socket->write($address, $request);
+
+        $packet_index = 0;
+        $packet_count = 1;
+        $servers = [];
+        while ( $packet_index < $packet_count )
+        {
+            $this->parse_master_response(
+                $socket->read($address, $read_size),
+                $packet_index,
+                $packet_count,
+                $servers
+            );
+        }
+        return $servers;
+    }
+
+    /**
+     * \brief Parses the result of a getserversExt response from the master.
+     */
+    private function parse_master_response($data, &$index, &$count, &$servers)
+    {
+        $index = 1;
+        $count = 1;
+
+        $buffer = fopen("php://memory", "rwb");
+        fwrite($buffer, $data);
+        rewind($buffer);
+
+        $nextbyte = function() use ($buffer)
+        {
+            return fread($buffer, 1);
+        };
+
+        $read_until = function($skipped, &$read = null) use ($nextbyte)
+        {
+            $byte = $nextbyte();
+            $read = "";
+            while ( strpos($skipped, $byte) === false && $byte != "" )
+            {
+                $read += $byte;
+                $byte = $nextbyte();
+            }
+            return $byte;
+        };
+
+        $skip = function($skipped="\\/") use ($read_until)
+        {
+            return $read_until($skipped);
+        };
+
+        $byte = $skip("\\/\0");
+
+        if ( $byte == '\0' )
+        {
+            $byte = $read_until("\\/\0", $index);
+            if ( $byte == '\0' )
+                $byte = $read_until("\\/\0", $count);
+            if ( $byte == '\\' || $byte == '/')
+                $byte = $skip();
+        }
+
+        for ( ; !feof($buffer);  $byte = $nextbyte() )
+        {
+            if ( $byte == "\\" ) # IPv4
+            {
+                $ip = [];
+                foreach ( range(0, 3) as $i )
+                    $ip[] = (string)ord($nextbyte());
+                $port = ord($nextbyte()) << 8;
+                $port |= ord($nextbyte());
+                $servers[] = new Engine_Address($this, implode(".", $ip), $port);
+            }
+            elseif ( $byte == "/" ) # IPv6
+            {
+                $ip = [];
+                foreach ( range(0, 7) as $i )
+                {
+                    $high = sprintf('%02x', ord($nextbyte()));
+                    $low = sprintf('%02x', ord($nextbyte()));
+                    $ip[] = "$high$low";
+                    $port = ord($nextbyte()) << 8;
+                    $port |= ord($nextbyte());
+                    $servers[] = new Engine_Address($this, "[".implode(":", $ip)."]", $port);
+                }
+            }
+        }
     }
 }
 
@@ -119,10 +246,84 @@ class Engine_Address
     function __toString()
     {
         $scheme = "";
-        if ( $use_scheme && $this->protocol->scheme )
+        if ( $this->protocol->scheme )
             $scheme = $this->protocol->scheme . "://";
         return "$scheme$this->host:$this->port";
     }
+
+}
+
+class EngineSocket
+{
+    static $default_write_timeout = 1000; // 1 millisecond
+    static $default_read_timeout = 40000; // 40 milliseconds
+    private $socket = null;
+
+    function socket()
+    {
+        if ( $this->socket == null )
+        {
+            $this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+            $this->set_timeout(
+                EngineSocket::$default_write_timeout,
+                EngineSocket::$default_read_timeout
+            );
+        }
+        return $this->socket;
+    }
+
+    function set_timeout($send_microseconds, $receive_microseconds = -1)
+    {
+        if ( !$this->socket )
+            return;
+
+        if ( $receive_microseconds < 0 )
+            $receive_microseconds = $send_microseconds;
+
+        if ( $send_microseconds > 0 )
+            socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO,
+                array('sec' => 0, 'usec' => $send_microseconds));
+
+        if ( $receive_microseconds > 0 )
+            socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO,
+                array('sec' => 0, 'usec' => $receive_microseconds));
+
+    }
+
+    function request(Engine_Address $address, $request)
+    {
+        if ( !$this->socket() )
+            return false;
+
+        $request_command = strtok($request, " ");
+        $contents = $address->protocol->header.$request;
+
+        $this->write($address, $contents);
+
+        $received = $this->read($address, $address->protocol->receive_len);
+
+        $header = $address->protocol->header;
+        if ( !empty($address->protocol->responses[$request_command]) )
+            $header .= $address->protocol->responses[$request_command];
+        if ( $header != substr($received, 0, strlen($header)) )
+            return false;
+        return substr($received, strlen($header));
+    }
+
+    function write($address, $data)
+    {
+        socket_sendto($this->socket(), $data, strlen($data),
+            0, $address->host, $address->port);
+    }
+
+    function read($address, $read_size)
+    {
+        $received = "";
+        socket_recvfrom($this->socket(), $received, $read_size,
+            0, $address->host, $address->port);
+        return $received;
+    }
+
 }
 
 
@@ -131,71 +332,13 @@ class Engine_Address
  */
 class Engine_Connection
 {
-    static $default_write_timeout = 1000;
-    static $default_read_timeout = 40000;
     public $address;
     protected $socket;
 
     function __construct(Engine_Address $address)
     {
         $this->address = $address;
-    }
-
-    function socket()
-    {
-        if ( $this->socket == null )
-        {
-            $this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-            if ( $this->socket ) {
-                // socket_bind($this->socket, $this->host);
-                // default timeout = 1, 40 millisecond
-                $this->socket_timeout(
-                    Engine_Connection::$default_write_timeout,
-                    Engine_Connection::$default_read_timeout
-                );
-            }
-        }
-        return $this->socket;
-    }
-
-    function socket_timeout($send_microseconds, $receive_microseconds = -1)
-    {
-        if ( !$this->socket() ) return false;
-
-        if ( $receive_microseconds < 0 )
-            $receive_microseconds = $send_microseconds;
-
-        if ( $send_microseconds > 0 )
-            socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO,
-                array('sec' => 0, 'usec' => $send_microseconds));
-
-        if ( $receive_microseconds > 0 )
-            socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO,
-                array('sec' => 0, 'usec' => $receive_microseconds));
-
-    }
-
-    function request($request)
-    {
-        if ( !$this->socket() ) return false;
-
-        $request_command = strtok($request," ");
-        $contents = $this->address->protocol->header.$request;
-
-        socket_sendto($this->socket, $contents, strlen($contents),
-            0, $this->address->host, $this->address->port);
-
-        $received = "";
-        socket_recvfrom($this->socket, $received,
-            $this->address->protocol->receive_len,
-            0, $this->address->host, $this->address->port);
-
-        $header = $this->address->protocol->header;
-        if ( !empty($this->address->protocol->responses[$request_command]) )
-            $header .= $this->address->protocol->responses[$request_command];
-        if ( $header != substr($received, 0, strlen($header)) )
-            return false;
-        return substr($received, strlen($header));
+        $this->socket = new EngineSocket();
     }
 
     function status()
@@ -206,8 +349,9 @@ class Engine_Connection
             "error" => false,
             "host" => $this->address->host,
             "port" => $this->address->port,
-            "server.name" => $this->address->to_string(false),
+            "server.name" => "$this->address",
             "clients.players" => array(),
+            "mapname" => "",
         );
 
         if ( !$status_response )
@@ -237,6 +381,11 @@ class Engine_Connection
         }
 
         return $this->address->protocol->normalize_status($result);
+    }
+
+    function request($request)
+    {
+        return $this->socket->request($this->address, $request);
     }
 
 }
@@ -417,13 +566,63 @@ class Controller_Singleton
 
         return "";
     }
+
+    function server_list_html($addresses, $css_prefix="dptable_")
+    {
+        if ( empty($addresses) )
+            return "";
+
+        $table = new HTML_Table("{$css_prefix}server_list");
+        $headers = ["Server", "Version", "Map", "Players", "Links"];
+        $table->header_row($headers);
+        print_r($addresses);
+        foreach ( $addresses as $address )
+        {
+            $address = Engine_Address::address($address);
+            $status = $this->status($address);
+
+            $link = "$address";
+            if ( $address->protocol->scheme )
+                $link = new HTML_Link("Connect", $link);
+
+            $table->data_row([
+                DpStringFunc::string_dp2html($status["server.name"]),
+                "TODO",
+                $status["mapname"],
+                $this->player_number($status),
+                $link
+            ], false);
+
+            $table->data_row(new HTML_TableCell(
+                $this->players_html($address),
+                false,
+                array("columnspan" => count($headers))
+            ), false);
+
+        }
+        return $table;
+    }
+
+    function server_list($master_address) // TODO Caching
+    {
+        if ( !$master_address )
+            return [];
+        $master_address = Engine_Address::address($master_address);
+        return $master_address->protocol->server_list($master_address);
+    }
+
+    function protocol_server_list($protocol)
+    {
+        if ( is_string($protocol) )
+            $protocol = Engine_Address::parse_scheme($protocol);
+        return $this->server_list($protocol->default_master());
+    }
 }
 
 function Controller()
 {
     return Controller_Singleton::instance();
 }
-
 
 /**
  * \brief Simple, 12 bit rgb color

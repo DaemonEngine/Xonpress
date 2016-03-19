@@ -80,6 +80,27 @@ function xonpress_player_number ( $attributes )
     return Controller()->player_number( $attributes["server"] );
 }
 
+function xonpress_server_list( $attributes )
+{
+    $attributes = shortcode_atts( array (
+        'master'            => '',
+        'master_protocol'   => '',
+        'servers'           => '',
+    ), $attributes );
+
+    $servers = [];
+
+    if ( !empty(trim($attributes["servers"])) )
+        $servers = array_merge($servers, explode(" ", $attributes["servers"]));
+
+    if ( $attributes["master"] )
+        $servers = array_merge($servers, Controller()->server_list($attributes["master"]));
+    elseif ( $attributes["master_protocol"] )
+        $servers = array_merge($servers, Controller()->protocol_server_list($attributes["master_protocol"]));
+
+    return Controller()->server_list_html($servers);
+}
+
 function xonpress_mapinfo( $attributes ) 
 {
     if ( empty($attributes['title']) && empty($attributes['mapinfo']) )
