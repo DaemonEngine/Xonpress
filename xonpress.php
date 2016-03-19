@@ -35,8 +35,8 @@ require_once('xp_widgets.php');
 
 function xonpress_initialize()
 {
-	Engine_ConnectionWp::create_table();
-	Xonpress_Settings::init();
+    Engine_ConnectionWp::create_table();
+    Xonpress_Settings::init();
 }
 
 

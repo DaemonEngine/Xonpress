@@ -21,99 +21,99 @@
 
 class Xonpress_ServerTable extends WP_Widget 
 {
-	/**
-	 * Sets up the widgets name etc
-	 */
-	public function __construct() 
-	{
-		parent::__construct (
-			'Xonpress_ServerTable', // id
-			'Xonotic Server Table',  //name
-			array ( // wp_register_sidebar_widget options 
-				'description' => 'Shows the number of players in the provided servers', 
-			) 
-		);
-	}
+    /**
+     * Sets up the widgets name etc
+     */
+    public function __construct()
+    {
+        parent::__construct (
+            'Xonpress_ServerTable', // id
+            'Xonotic Server Table',  //name
+            array ( // wp_register_sidebar_widget options
+                'description' => 'Shows the number of players in the provided servers',
+            )
+        );
+    }
 
-	/**
-	 * Outputs the content of the widget
-	 *
-	 * @param array $args
-	 * @param array $instance
-	 */
-	public function widget( $args, $instance ) 
-	{
-		echo $args['before_widget'];
-		
-		if ( ! empty( $instance['title'] ) ) 
-			echo $args['before_title'] . apply_filters( 'widget_title', $instance['title'] ). $args['after_title'];
-		
-		$servers = explode( ' ', $instance['servers'] );
-		
-		$table = new HTML_Table();
-		
-		foreach ( $servers as $server )
-		{
-			$address = Engine_Address($server);
-			$status = Controller()->status($address);
-			$table->simple_row(
-				DpStringFunc::string_dp2none($status["server.name"]),
-				Controller()->player_number($status)
-			);
-		}
-		
-		echo $table;
-		echo $args['after_widget'];
-	}
+    /**
+     * Outputs the content of the widget
+     *
+     * @param array $args
+     * @param array $instance
+     */
+    public function widget( $args, $instance )
+    {
+        echo $args['before_widget'];
 
-	/**
-	 * Outputs the options form on admin
-	 *
-	 * @param array $instance The widget options
-	 */
-	public function form( $instance ) 
-	{
-		$title = empty( $instance['title'] ) ? '' : $instance['title'];
-		$servers = empty( $instance['servers'] ) ? '127.0.0.1:26000' : $instance['servers'];
-		?>
-		<p>
-		<label for="<?php echo $this->get_field_id( 'title' ); ?>">Title:</label> 
-		<input class="widefat" id="<?php echo $this->get_field_id( 'title' ); ?>" name="<?php echo $this->get_field_name( 'title' ); ?>" type="text" value="<?php echo esc_attr( $title ); ?>" />
-		</p>
-		<p>
-		<label for="<?php echo $this->get_field_id( 'servers' ); ?>">Servers:</label> 
-		<input class="widefat" id="<?php echo $this->get_field_id( 'servers' ); ?>" name="<?php echo $this->get_field_name( 'servers' ); ?>" type="text" value="<?php echo esc_attr( $servers ); ?>" />
-		</p>
-		<?php 
-	}
+        if ( ! empty( $instance['title'] ) )
+            echo $args['before_title'] . apply_filters( 'widget_title', $instance['title'] ). $args['after_title'];
 
-	/**
-	 * Processing widget options on save
-	 *
-	 * @param array $new_instance The new options
-	 * @param array $old_instance The previous options
-	 */
-	public function update( $new_instance, $old_instance ) 
-	{
-		$instance = array();
-		
-		$instance['title'] = isset($new_instance['title']) ?  $new_instance['title'] : '';
-		
-		$servers = array();
-		
-		$new_servers = preg_split('/[\s,]+/', $new_instance['servers'], null, PREG_SPLIT_NO_EMPTY );
-		foreach ( $new_servers as $server )
-			if ( preg_match(self::$server_regex, $server) )
-				$servers []= $server;
-		
-		$instance['servers'] = implode(' ',$servers);
+        $servers = explode( ' ', $instance['servers'] );
 
-		return $instance;
-	}
+        $table = new HTML_Table();
+
+        foreach ( $servers as $server )
+        {
+            $address = Engine_Address($server);
+            $status = Controller()->status($address);
+            $table->simple_row(
+                DpStringFunc::string_dp2none($status["server.name"]),
+                Controller()->player_number($status)
+            );
+        }
+
+        echo $table;
+        echo $args['after_widget'];
+    }
+
+    /**
+     * Outputs the options form on admin
+     *
+     * @param array $instance The widget options
+     */
+    public function form( $instance )
+    {
+        $title = empty( $instance['title'] ) ? '' : $instance['title'];
+        $servers = empty( $instance['servers'] ) ? '127.0.0.1:26000' : $instance['servers'];
+        ?>
+        <p>
+        <label for="<?php echo $this->get_field_id( 'title' ); ?>">Title:</label>
+        <input class="widefat" id="<?php echo $this->get_field_id( 'title' ); ?>" name="<?php echo $this->get_field_name( 'title' ); ?>" type="text" value="<?php echo esc_attr( $title ); ?>" />
+        </p>
+        <p>
+        <label for="<?php echo $this->get_field_id( 'servers' ); ?>">Servers:</label>
+        <input class="widefat" id="<?php echo $this->get_field_id( 'servers' ); ?>" name="<?php echo $this->get_field_name( 'servers' ); ?>" type="text" value="<?php echo esc_attr( $servers ); ?>" />
+        </p>
+        <?php
+    }
+
+    /**
+     * Processing widget options on save
+     *
+     * @param array $new_instance The new options
+     * @param array $old_instance The previous options
+     */
+    public function update( $new_instance, $old_instance )
+    {
+        $instance = array();
+
+        $instance['title'] = isset($new_instance['title']) ?  $new_instance['title'] : '';
+
+        $servers = array();
+
+        $new_servers = preg_split('/[\s,]+/', $new_instance['servers'], null, PREG_SPLIT_NO_EMPTY );
+        foreach ( $new_servers as $server )
+            if ( preg_match(self::$server_regex, $server) )
+                $servers []= $server;
+
+        $instance['servers'] = implode(' ',$servers);
+
+        return $instance;
+    }
 }
 
 
 function xonpress_widgets_init()
 {
-	register_widget( 'Xonpress_ServerTable' );
+    register_widget( 'Xonpress_ServerTable' );
 }
