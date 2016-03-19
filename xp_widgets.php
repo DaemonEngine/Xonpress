@@ -56,13 +56,10 @@ class Xonpress_ServerTable extends WP_Widget
 		{
 			$address = Engine_Address($server);
 			$status = Controller()->status($address);
-			if ( $status['error'] )
-				$table->simple_row("{$address->host}:{$address->port}", 0);
-			else
-				$table->simple_row(
-					DpStringFunc::string_dp2none($status["server.name"]),
-					Controller()->player_number($status)
-				);
+			$table->simple_row(
+				DpStringFunc::string_dp2none($status["server.name"]),
+				Controller()->player_number($status)
+			);
 		}
 		
 		echo $table;

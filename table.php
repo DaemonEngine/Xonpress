@@ -41,8 +41,8 @@ class HTML_Element
 		$html = "<{$this->element_name}";
 		foreach ( $this->attributes as $name => $value )
 			if ( $value !== "" )
-				$html .= ' '.htmlentities($name,ENT_QUOTES).'="'.
-					htmlentities($value,ENT_QUOTES).'"';
+				$html .= ' '.htmlentities($name, ENT_QUOTES).'="'.
+					htmlentities($value, ENT_QUOTES).'"';
 		if ( $this->simple )
 			$html .= "/>";
 		else
@@ -132,4 +132,26 @@ class HTML_Table extends HTML_Element
 	}
 	
 	
+}
+
+class HTML_Link extends HTML_Element
+{
+	public $text;
+	public $destination;
+
+	function __construct($text, $destination=null, $escape_text=true, $attributes=array() )
+	{
+		$attributes["href"] = $destination == null ? $text : $destination;
+		parent::__construct("a", false, $attributes);
+
+		if ( $escape_text )
+			$this->text = htmlentities($text);
+		else
+			$this->text = $text;
+	}
+
+	function contents()
+	{
+		return $this->text;
+	}
 }

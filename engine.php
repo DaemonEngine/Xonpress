@@ -31,6 +31,7 @@ class Darkplaces_Protocol
 	);
 	public $receive_len = 1399;
 	public $default_port = 26000;
+	public $scheme = null;
 
 
 	/**
@@ -53,8 +54,9 @@ class Daemon_Protocol
 		"getinfo" => "infoResponse\n",
 		"getstatus" => "statusResponse\n",
 	);
-	public $receive_len = 1399;
+	public $receive_len = 32768;
 	public $default_port = 27960;
+	public $scheme = "unv";
 
 
 	/**
@@ -112,6 +114,14 @@ class Engine_Address
 		if ( is_object($obj) && $obj instanceof Engine_Address )
 			return $obj;
 		return Engine_Address::parse($obj);
+	}
+
+	function __toString()
+	{
+		$scheme = "";
+		if ( $use_scheme && $this->protocol->scheme )
+			$scheme = $this->protocol->scheme . "://";
+		return "$scheme$this->host:$this->port";
 	}
 }
 
@@ -196,8 +206,8 @@ class Engine_Connection
 			"error" => false,
 			"host" => $this->address->host,
 			"port" => $this->address->port,
-			"server.name" => "{$this->address->host}:{$this->address->port}",
-			"players" => array(),
+			"server.name" => $this->address->to_string(false),
+			"clients.players" => array(),
 		);
 
 		if ( !$status_response )
@@ -247,7 +257,7 @@ abstract class Engine_ConnectionCached extends Engine_Connection
 	
 	function key_suggestion($request)
 	{
-		return "{$this->address->host}:{$this->address->port}:$request";
+		return "$this->address:$request";
 	}
 	
 	abstract protected function get_cached_request($request);
@@ -307,7 +317,7 @@ class Controller_Singleton
 	function get_connection($address)
 	{
 		$address = Engine_Address::address($address);
-		$key = "{$address->host}:{$address->port}";
+		$key = (string)$address;
 		if (isset($this->connections[$key]))
 			return $this->connections[$key];
 		$connection = $this->connection_factory->build($address);
@@ -355,14 +365,12 @@ class Controller_Singleton
 	{
 		$address = Engine_Address::address($address);
 		$status = $this->status($address);
-		
-		if ( empty($public_host) ) $public_host = $address->host;
 
 		$status_table = new HTML_Table("{$css_prefix}status");
 
 		$server_name = DpStringFunc::string_dp2html($status["server.name"]);
 		if ( $stats_url )
-			$server_name = "<a href='$stats_url'>$server_name</a>";
+			$server_name = new HTML_Link($server_name, $stats_url);
 		$status_table->simple_row("Server", $server_name, false);
 
 		if ( $status["error"] )
@@ -373,7 +381,14 @@ class Controller_Singleton
 		}
 		else
 		{
-			$status_table->simple_row("Address","$public_host:{$address->port}");
+			$public_address = clone $address;
+			if ( !empty($public_host) )
+				$public_address->host = $public_host;
+			$link = "$public_address";
+			if ( $public_address->protocol->scheme )
+				$link = new HTML_Link($link);
+
+			$status_table->simple_row("Address", $link, false);
 			$status_table->simple_row("Map", $status["mapname"]);
 			$status_table->simple_row("Players", $this->player_number($status));
 		}
