@@ -290,7 +290,7 @@ class StringParser
 
     protected function push_string()
     {
-        if ( $this->current_string != null && $this->current_string->text != "" )
+        if ( $this->current_string->text != "" )
             $this->output->append($this->current_string);
     }
 
@@ -360,7 +360,7 @@ class StringParser
 
         $this->output = new String();
         $this->subject = $string;
-        $this->push_color($this->default_color);
+        $this->current_string = new ColoredText($this->default_color);
 
         for ( $i = 0; $i < strlen($string); )
         {
