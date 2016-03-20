@@ -614,19 +614,31 @@ class Controller_Singleton
             if ( isset($status["sv_statsURL"]) )
                 $link .= " " . new HTML_Link("Stats", $status["sv_statsURL"]);
 
-            $table->data_row([
-                $address->protocol->string->to_html($status["server.name"]),
-                $status["server.version"],
-                $status["mapname"],
-                $this->player_number($status),
-                $link
-            ], false);
-
-            $table->data_row(new HTML_TableCell(
-                $this->players_html($address),
+            $table->data_row(
+                [
+                    $address->protocol->string->to_html($status["server.name"]),
+                    $status["server.version"],
+                    $status["mapname"],
+                    $this->player_number($status),
+                    $link
+                ],
                 false,
-                array("colspan" => count($headers))
-            ), false);
+                array(
+                    "class" => "{$css_prefix}server_list_info",
+                )
+            );
+
+            $table->data_row(
+                new HTML_TableCell(
+                    $this->players_html($address),
+                    false,
+                    array("colspan" => count($headers))
+                ),
+                false,
+                array(
+                    "class" => "{$css_prefix}server_list_players",
+                )
+            );
 
         }
         return $table;
