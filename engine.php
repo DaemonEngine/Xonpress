@@ -71,6 +71,8 @@ class Darkplaces_Protocol extends Protcol
     function normalize_status($status_array)
     {
         $status_array["server.name"] = $status_array["hostname"];
+        $status_array["server.game"] = $status_array["gamename"];
+        $status_array["server.version"] = $status_array["gameversion"];
         return $status_array;
     }
 }
@@ -96,6 +98,12 @@ class Daemon_Protocol extends Protcol
     function normalize_status($status_array)
     {
         $status_array["server.name"] = $status_array["sv_hostname"];
+        $matches = [];
+        if ( preg_match("/^(\S+)\s+(\S+).*/", $status_array["version"], $matches) )
+        {
+            $status_array["server.game"] = $matches[1];
+            $status_array["server.version"] = $matches[2];
+        }
         return $status_array;
     }
 
@@ -361,6 +369,8 @@ class Engine_Connection
             "host" => $this->address->host,
             "port" => $this->address->port,
             "server.name" => "$this->address",
+            "server.game" => "",
+            "server.version" => "",
             "clients.players" => array(),
             "mapname" => "",
         );
@@ -603,7 +613,7 @@ class Controller_Singleton
 
             $table->data_row([
                 $address->protocol->string->to_html($status["server.name"]),
-                "TODO",
+                $status["server.version"],
                 $status["mapname"],
                 $this->player_number($status),
                 $link
