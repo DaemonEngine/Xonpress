@@ -227,7 +227,7 @@ class Xonpress_Settings
                     $min = self::$options[$key]['min'];
                     $max = self::$options[$key]['max'];
                     $step = self::$options[$key]['step'];
-                    $this->render_input_checkbox($option_key, $min, $max, $step);
+                    $this->render_input_number($option_key, $min, $max, $step);
                     break;
                 case 'text':
                 default:
