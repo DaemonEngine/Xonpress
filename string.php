@@ -434,9 +434,9 @@ class DaemonStringParser extends StringParser
     {
         $float_color = self::$color_table[$table_index];
         return new Color(
-            (int)$float_color[0] * 255,
-            (int)$float_color[1] * 255,
-            (int)$float_color[2] * 255
+            (int)($float_color[0] * 255),
+            (int)($float_color[1] * 255),
+            (int)($float_color[2] * 255)
         );
     }
 
