@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 require_once("table.php");
+require_once("string.php");
 
 class Protcol
 {
@@ -26,7 +27,7 @@ class Protcol
     public $receive_len = 1024;
     public $default_port = 26000;
     public $scheme = null;
-
+    public $string;
 
     /**
      * \brief Populates high-level keys
@@ -62,6 +63,11 @@ class Darkplaces_Protocol extends Protcol
     public $receive_len = 1399;
     public $default_port = 26000;
 
+    function __construct()
+    {
+        $this->string = new DarkplacesStringParser();
+    }
+
     function normalize_status($status_array)
     {
         $status_array["server.name"] = $status_array["hostname"];
@@ -81,6 +87,11 @@ class Daemon_Protocol extends Protcol
     public $receive_len = 32768;
     public $default_port = 27960;
     public $scheme = "unv";
+
+    function __construct()
+    {
+        $this->string = new DaemonStringParser();
+    }
 
     function normalize_status($status_array)
     {
@@ -517,7 +528,7 @@ class Controller_Singleton
 
         $status_table = new HTML_Table("{$css_prefix}status");
 
-        $server_name = DpStringFunc::string_dp2html($status["server.name"]);
+        $server_name = $address->protocol->string->to_html($status["server.name"]);
         if ( $stats_url )
             $server_name = new HTML_Link($server_name, $stats_url);
         $status_table->simple_row("Server", $server_name, false);
@@ -548,6 +559,7 @@ class Controller_Singleton
 
     function players_html($address, $css_prefix="dptable_")
     {
+        $address = Engine_Address::address($address);
         $status = $this->status($address);
 
         if (!empty($status["clients.players"]))
@@ -557,7 +569,11 @@ class Controller_Singleton
 
             foreach ( $status["clients.players"] as $player )
                 $players->data_row( array (
-                    new HTML_TableCell(DpStringFunc::string_dp2html($player->name), false, array('class'=>"{$css_prefix}player_name")),
+                    new HTML_TableCell(
+                        $address->protocol->string->to_html($player->name),
+                        false,
+                        array('class'=>"{$css_prefix}player_name")
+                    ),
                     $player->score == -666 ? "spectator" : $player->score,
                     $player->bot ? "bot" : $player->ping,
                 ), false );
@@ -575,6 +591,7 @@ class Controller_Singleton
         $table = new HTML_Table("{$css_prefix}server_list");
         $headers = ["Server", "Version", "Map", "Players", "Links"];
         $table->header_row($headers);
+
         foreach ( $addresses as $address )
         {
             $address = Engine_Address::address($address);
@@ -585,7 +602,7 @@ class Controller_Singleton
                 $link = new HTML_Link("Connect", $link);
 
             $table->data_row([
-                DpStringFunc::string_dp2html($status["server.name"]),
+                $address->protocol->string->to_html($status["server.name"]),
                 "TODO",
                 $status["mapname"],
                 $this->player_number($status),
@@ -621,265 +638,6 @@ class Controller_Singleton
 function Controller()
 {
     return Controller_Singleton::instance();
-}
-
-/**
- * \brief Simple, 12 bit rgb color
- */
-class Color_12bit
-{
-    public $r, $g, $b;
-
-    function __construct ($r=0, $g=0, $b=0)
-    {
-        $this->r = $r;
-        $this->g = $g;
-        $this->b = $b;
-    }
-
-    /**
-     * \brief Get the 12bit integer
-     */
-    function bitmask()
-    {
-        return ($this->r<<8)|($this->g<<4)|$this->b;
-    }
-
-    function luma()
-    {
-        return (0.3*$this->r + 0.59*$this->g + 0.11*$this->b) / 15;
-    }
-
-    /**
-     * \brief Multiply by a [0,1] value
-     */
-    function multiply($value)
-    {
-        $this->r = (int)($this->r*$value);
-        $this->g = (int)($this->g*$value);
-        $this->b = (int)($this->b*$value);
-    }
-
-    /**
-     * \brief Add a [0,1] value
-     */
-    function add($value)
-    {
-        $this->r = (int)max($this->r+$value*15,15);
-        $this->g = (int)max($this->g+$value*15,15);
-        $this->b = (int)max($this->b+$value*15,15);
-    }
-
-    /**
-     * \brief Decode darkplaces color
-     */
-    static function decode_dp($dpcolor)
-    {
-        $dpcolor = ltrim($dpcolor,"^x");
-
-        if ( strlen($dpcolor) == 3 )
-            return new Color_12bit(hexdec($dpcolor[0]),hexdec($dpcolor[1]),hexdec($dpcolor[2]));
-        else if ( strlen($dpcolor) == 1 )
-            switch ( $dpcolor[0] )
-            {
-                case 0: return new Color_12bit(0,0,0);
-                case 1: return new Color_12bit(0xf,0,0);
-                case 2: return new Color_12bit(0,0xf,0);
-                case 3: return new Color_12bit(0xf,0xf,0);
-                case 4: return new Color_12bit(0,0,0xf);
-                case 5: return new Color_12bit(0,0xf,0xf);
-                case 6: return new Color_12bit(0xf,0,0xf);
-                case 7: return new Color_12bit(0xf,0xf,0xf);
-                case 8: return new Color_12bit(0x8,0x8,0x8);
-                case 9: return new Color_12bit(0xc,0xc,0xc);
-            }
-        return new Color_12bit();
-    }
-
-    /**
-     * \brief Encode to html
-     */
-    function encode_html()
-    {
-        return "#".dechex($this->r).dechex($this->g).dechex($this->b);
-    }
-
-    function __toString()
-    {
-        return $this->encode_html();
-    }
-}
-
-// DarkPlaces to HTML functor
-class DpStringFunc
-{
-    private $open = false;
-    public $min_luma = 0;
-    public $max_luma = 0.8;
-    static $convert_qfont = true;
-
-    function html_close()
-    {
-        if ( $this->open )
-        {
-            $this->open = false;
-            return "</span>";
-        }
-        return "";
-    }
-
-    function __invoke($matches="")
-    {
-        if (!empty($matches[2]))
-        {
-            $close = $this->html_close();
-            $this->open = true;
-
-            $color = Color_12bit::decode_dp($matches[2]);
-
-            $luma = $color->luma();
-            if ( $luma > $this->max_luma )
-                $color->multiply($this->max_luma);
-            else if ( $luma < $this->min_luma )
-                $color->add($this->min_luma);
-
-            return "$close<span style='color: $color;'>";
-        }
-
-        if (!empty($matches[1]))
-            $text = "^";
-        else if (is_array($matches))
-            $text = $matches[0];
-        else
-            $text = $matches;
-
-        return htmlspecialchars($text);
-    }
-
-    //                              1      2                                   3
-    static private $color_regex = "/(\^\^)|((?:\^[0-9])|(?:\^x[0-9a-fA-F]{3}))|([^^]*(?:^$)?)/";
-
-    /**
-     * \brief Strip colors from a DP colored string
-     */
-    static function string_dp2none($string)
-    {
-        return preg_replace_callback(self::$color_regex,
-            function ($matches)
-            {
-                if ( $matches[0] == "^^" )
-                    return "^";
-                else if ( !empty($matches[3]) )
-                    return $matches[3];
-                return "";
-            }
-            ,self::string_dp_convert($string));
-    }
-
-    /**
-     * \brief Convert a colored DP string to a colored HTML string
-     */
-    static function string_dp2html($string)
-    {
-        $functor = new DpStringFunc();
-
-        return preg_replace_callback(self::$color_regex, $functor,
-            self::string_dp_convert($string)).$functor->html_close();
-    }
-
-    static private $qfont_table = array(
-    '',   ' ',  '-',  ' ',  '_',  '#',  '+',  '·',  'F',  'T',  ' ',  '#',  '·',  '<',  '#',  '#', // 0
-    '[',  ']',  ':)', ':)', ':(', ':P', ':/', ':D', '«',  '»',  '·',  '-',  '#',  '-',  '-',  '-', // 1
-    '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 2
-    '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 3
-    '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 4
-    '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 5
-    '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 6
-    '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?',  '?', // 7
-    '=',  '=',  '=',  '#',  '¡',  '[o]','[u]','[i]','[c]','[c]','[r]','#',  '¿',  '>',  '#',  '#', // 8
-    '[',  ']',  ':)', ':)', ':(', ':P', ':/', ':D', '«',  '»',  '#',  'X',  '#',  '-',  '-',  '-', // 9
-    ' ',  '!',  '"',  '#',  '$',  '%',  '&',  '\'', '(',  ')',  '*',  '+',  ',',  '-',  '.',  '/', // 10
-    '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7', '8',  '9',  ':',  ';',  '<',  '=',  '>',  '?',  // 11
-    '@',  'A',  'B',  'C',  'D',  'E',  'F',  'G', 'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  // 12
-    'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W', 'X',  'Y',  'Z',  '[',  '\\', ']',  '^',  '_',  // 13
-    '.',  'A',  'B',  'C',  'D',  'E',  'F',  'G', 'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  // 14
-    'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W', 'X',  'Y',  'Z',  '{',  '|',  '}',  '~',  '<'   // 15
-    );
-
-    /**
-     * \brief Convert special DP characters to Unicode
-     * \note Supports for up to 3 byte long UTF-8 characters
-     */
-    static function string_dp_convert($string)
-    {
-        if ( !self::$convert_qfont )
-            return $string;
-
-        $out = "";
-
-        $unicode = array();
-        $bytes = array();
-
-        for ($i = 0; $i < strlen( $string ); $i++ )
-        {
-            $c = $string[$i];
-            $char_byte = ord($c);
-
-            if ( $char_byte < 128 )
-            {
-                // ASCII
-                $out .= $c;
-            }
-            else
-            {
-                // Start of multibyte character
-                // NOTE: the only one not starting with 0 or 10
-                if ( count($bytes) == 0 )
-                {
-                    $unicode_char = "";
-                    $length = 0;
-                    // extract number of leading 1s
-                    while ( $char_byte & 0x80 )
-                    {
-                        $length++;
-                        $char_byte <<= 1;
-                    }
-
-                    // Must be at least 110..... or fail
-                    if ( $length < 2 )
-                        continue;
-
-                    // Restore byte (leading 1s have been eaten off)
-                    $char_byte >>= $length;
-                }
-
-                // Keep track of bytes
-                $bytes[] = $char_byte;
-                $unicode_char .= $c;
-
-                // Reached the end
-                // NOTE: checking for $length ensures that invalid utf-8 codes are discarded
-                if ( count( $bytes ) == $length )
-                {
-                    $unicode = 0;
-                    foreach ( $bytes as $byte )
-                    {
-                        // Add up all the bytes
-                        // Besides the first, they all start with 01...
-                        // So they give 6 bits and need to be &-ed with 63
-                        $unicode <<= 6;
-                        $unicode |= $byte & 63;
-                    }
-
-                    // Get the output string we want
-                    $out .= ( ($unicode & 0xFF00) == 0xE000 ) ? self::$qfont_table[$unicode&0xff] : $unicode_char;
-
-                    $bytes = array();
-                }
-            }
-        }
-        return $out;
-    }
 }
 
 /**

@@ -57,7 +57,7 @@ class Xonpress_ServerTable extends WP_Widget
             $address = Engine_Address::parse($server);
             $status = Controller()->status($address);
             $table->simple_row(
-                DpStringFunc::string_dp2none($status["server.name"]),
+                $address->protocol->string->to_plaintext($status["server.name"]),
                 Controller()->player_number($status)
             );
         }

@@ -63,15 +63,57 @@ class Xonpress_Settings
             ),
             "qfont" => array(
                 'type' => 'checkbox',
-                'desc' => 'Convert QFont to Unicode',
+                'desc' => 'Convert Darkplaces QFont to Unicode',
                 'default' => "1",
+            ),
+            "unvicon_prefix" => array(
+                'type' => 'text',
+                'desc' => 'Unvanquished icon prefix',
+                'default' => UnvIcon::$image_prefix,
+            ),
+            "unvicon_suffix" => array(
+                'type' => 'text',
+                'desc' => 'Unvanquished icon suffix',
+                'default' => UnvIcon::$image_suffix,
+            ),
+            "color_min_luma" => array(
+                'type' => 'number',
+                'desc' => 'Minimum color luma (to contrast over dark backgrounds)',
+                'default' => StringParser::$min_luma,
+                'min' => 0,
+                'max' => 1,
+                'step' => 0.1,
+            ),
+            "color_max_luma" => array(
+                'type' => 'number',
+                'desc' => 'Maximum color luma (to contrast over light backgrounds)',
+                'default' => StringParser::$max_luma,
+                'min' => 0,
+                'max' => 1,
+                'step' => 0.1,
             ),
         );
 
         foreach ( self::$options as $key => &$val )
-            add_option(self::option_key($key),$val["default"]);
+        {
+            add_option(self::option_key($key), $val["default"]);
 
-        DpStringFunc::$convert_qfont = (int)self::get_option('qfont');
+            if ( $val["type"] == "number" )
+            {
+                if ( !isset($val['min']) )
+                    $val['min'] = 0;
+                if ( !isset($val['max']) )
+                    $val['max'] = 1;
+                if ( !isset($val['step']) )
+                    $val['step'] = 1;
+            }
+        }
+
+        DarkplacesStringParser::$convert_qfont = (int)self::get_option('qfont');
+        UnvIcon::$image_prefix = self::get_option('unvicon_prefix');
+        UnvIcon::$image_suffix = self::get_option('unvicon_suffix');
+        StringParser::$min_luma = self::get_option('color_min_luma');
+        StringParser::$max_luma = self::get_option('color_max_luma');
     }
 
     function admin_init()
@@ -88,7 +130,7 @@ class Xonpress_Settings
         foreach ( self::$options as $key => $val )
         {
             register_setting( $this->id, self::option_key($key),
-                function($input) use ($val) { return $this->sanitize($input,$val); }
+                function($input) use ($val) { return $this->sanitize($input, $val); }
             );
             add_settings_field(
                 self::$prefix.'['.$key.']',
@@ -142,6 +184,11 @@ class Xonpress_Settings
                 if ( $string == "" )
                     $string = $val["default"];
                 return $string;
+            case 'number':
+                $value = (float)$input;
+                $value = max((float)$val["min"], $value);
+                $value = min((float)$val["max"], $value);
+                return $value;
         }
         return $input;
     }
@@ -160,6 +207,12 @@ class Xonpress_Settings
         echo "/>";
     }
 
+    private function render_input_number($name, $min, $max, $step)
+    {
+        $value = esc_attr(get_option($name));
+        echo "<input type='number' min='$min' max='$max' step='$step' value='$value'/>";
+    }
+
     private function render_input($key)
     {
         if ( isset(self::$options[$key]) )
@@ -169,6 +222,12 @@ class Xonpress_Settings
             {
                 case 'checkbox':
                     $this->render_input_checkbox($option_key);
+                    break;
+                case 'number':
+                    $min = self::$options[$key]['min'];
+                    $max = self::$options[$key]['max'];
+                    $step = self::$options[$key]['step'];
+                    $this->render_input_checkbox($option_key, $min, $max, $step);
                     break;
                 case 'text':
                 default:
