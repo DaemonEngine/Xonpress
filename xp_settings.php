@@ -210,7 +210,7 @@ class Xonpress_Settings
     private function render_input_number($name, $min, $max, $step)
     {
         $value = esc_attr(get_option($name));
-        echo "<input type='number' min='$min' max='$max' step='$step' value='$value'/>";
+        echo "<input type='number' id='$name' name='$name' min='$min' max='$max' step='$step' value='$value'/>";
     }
 
     private function render_input($key)
