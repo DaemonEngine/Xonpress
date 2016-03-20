@@ -409,6 +409,11 @@ class Engine_Connection
         return $this->socket->request($this->address, $request);
     }
 
+    function master_list_servers()
+    {
+        return $this->address->protocol->server_list($this->address);
+    }
+
 }
 
 
@@ -449,6 +454,21 @@ abstract class Engine_ConnectionCached extends Engine_Connection
             $this->set_cached_request($request,$result);
 
         return $result;
+    }
+
+
+    function master_list_servers()
+    {
+        $cache_key = "__master_list_servers";
+        $cached = $this->get_cached_request($cache_key);
+        if ( $cached )
+        {
+            return explode(" ", $cached);
+        }
+
+        $addresses = parent::master_list_servers();
+        $this->set_cached_request($cache_key, implode(" ", $addresses));
+        return $addresses;
     }
 }
 
@@ -644,12 +664,12 @@ class Controller_Singleton
         return $table;
     }
 
-    function server_list($master_address) // TODO Caching
+    function server_list($master_address)
     {
         if ( !$master_address )
             return [];
-        $master_address = Engine_Address::address($master_address);
-        return $master_address->protocol->server_list($master_address);
+        $connection = $this->get_connection($master_address);
+        return $connection->master_list_servers();
     }
 
     function protocol_server_list($protocol)
