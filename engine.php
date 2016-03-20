@@ -163,7 +163,7 @@ class Daemon_Protocol extends Protcol
         {
             $byte = $nextbyte();
             $read = "";
-            while ( strpos($skipped, $byte) === false && $byte != "" )
+            while ( $byte != "" && strpos($skipped, $byte) === false )
             {
                 $read += $byte;
                 $byte = $nextbyte();
@@ -610,6 +610,9 @@ class Controller_Singleton
             $link = "$address";
             if ( $address->protocol->scheme )
                 $link = new HTML_Link("Connect", $link);
+
+            if ( isset($status["sv_statsURL"]) )
+                $link .= " " . new HTML_Link("Stats", $status["sv_statsURL"]);
 
             $table->data_row([
                 $address->protocol->string->to_html($status["server.name"]),
