@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Xonpress
- * Plugin URI: https://github.com/mbasaglia/Xonpress
+ * Plugin URI: https://gitlab.com/mattia.basaglia/Xonpress
  * Description: Xonotic Integration for Wordpress
  * Version: 0.1
  * Author: Mattia Basaglia
- * Author URI: https://github.com/mbasaglia
+ * Author URI: https://gitlab.com/mattia.basaglia
  * License: GPLv3+
  */
 /**
