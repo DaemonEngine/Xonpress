@@ -165,26 +165,30 @@ class Daemon_Protocol extends Protcol
             $read = "";
             while ( $byte != "" && strpos($skipped, $byte) === false )
             {
-                $read += $byte;
+                $read .= $byte;
                 $byte = $nextbyte();
             }
             return $byte;
         };
 
-        $skip = function($skipped="\\/") use ($read_until)
-        {
-            return $read_until($skipped);
-        };
+        $byte = $read_until("\\/\0");
 
-        $byte = $skip("\\/\0");
-
-        if ( $byte == '\0' )
+        if ( $byte === "\0" )
         {
-            $byte = $read_until("\\/\0", $index);
-            if ( $byte == '\0' )
-                $byte = $read_until("\\/\0", $count);
+            $index_str = '';
+            $count_str = '';
+            $byte = $read_until("\\/\0", $index_str);
+            if ( $byte === "\0" )
+            {
+                $byte = $read_until("\\/\0", $count_str);
+                if ( (int)$count_str >= 1 && (int)$index_str >= 1 && (int)$index_str <= (int)$count_str )
+                {
+                    $index = (int)$index_str;
+                    $count = (int)$count_str;
+                }
+            }
             if ( $byte == '\\' || $byte == '/')
-                $byte = $skip();
+                $byte = $read_until("\\/");
         }
 
         for ( ; !feof($buffer);  $byte = $nextbyte() )
@@ -196,7 +200,9 @@ class Daemon_Protocol extends Protcol
                     $ip[] = (string)ord($nextbyte());
                 $port = ord($nextbyte()) << 8;
                 $port |= ord($nextbyte());
-                $servers[] = new Engine_Address($this, implode(".", $ip), $port);
+                $ip = implode(".", $ip);
+                if ( $ip !== "0.0.0.0" )
+                    $servers[] = new Engine_Address($this, $ip, $port);
             }
             elseif ( $byte == "/" ) # IPv6
             {
