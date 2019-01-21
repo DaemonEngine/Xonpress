@@ -224,7 +224,7 @@ class Engine_Address
     function __construct($protocol, $host, $port)
     {
         if ( is_string($protocol) )
-            $this->protocol(Engine_Address::parse_scheme($protocol));
+            $this->protocol = Engine_Address::parse_scheme($protocol);
         else
             $this->protocol = $protocol;
         $this->host = $host;
