@@ -243,7 +243,7 @@ class UnvIcon implements StringObject
 
 }
 
-class String implements StringObject
+class MyString implements StringObject
 {
     public $elements = array();
 
@@ -358,7 +358,7 @@ class StringParser
         if ( $string == "" )
             return [];
 
-        $this->output = new String();
+        $this->output = new MyString();
         $this->subject = $string;
         $this->current_string = new ColoredText($this->default_color);
 
