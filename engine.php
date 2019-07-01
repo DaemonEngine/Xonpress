@@ -197,12 +197,18 @@ class Daemon_Protocol extends Protcol
             {
                 $ip = [];
                 foreach ( range(0, 3) as $i )
+                {
                     $ip[] = (string)ord($nextbyte());
+                    // ipv4 address field starts with '\'
+                    // but serverResponse packet also ends with '\'
+                    // if end of packet is reached, do not parse ipv4
+                    // and can stop the parsing there
+                    if ( feof($buffer) )
+                        return;
+                }
                 $port = ord($nextbyte()) << 8;
                 $port |= ord($nextbyte());
                 $ip = implode(".", $ip);
-                if ( $ip !== "0.0.0.0" )
-                    $servers[] = new Engine_Address($this, $ip, $port);
             }
             elseif ( $byte == "/" ) # IPv6
             {
