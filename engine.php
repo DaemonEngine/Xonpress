@@ -209,6 +209,7 @@ class Daemon_Protocol extends Protcol
                 $port = ord($nextbyte()) << 8;
                 $port |= ord($nextbyte());
                 $ip = implode(".", $ip);
+                $servers[] = new Engine_Address($this, $ip, $port);
             }
             elseif ( $byte == "/" ) # IPv6
             {
