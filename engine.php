@@ -599,6 +599,15 @@ class Controller_Singleton
         return $status_table;
     }
 
+    function validate_player_name($string)
+    {
+        if ( $string == "" )
+        {
+            return "Unnamed Player";
+        }
+
+        return $string;
+    }
 
     function players_html($address, $css_prefix="dptable_")
     {
@@ -613,7 +622,7 @@ class Controller_Singleton
             foreach ( $status["clients.players"] as $player )
                 $players->data_row( array (
                     new HTML_TableCell(
-                        $address->protocol->string->to_html($player->name),
+                        $address->protocol->string->to_html($this->validate_player_name($player->name)),
                         false,
                         array('class'=>"{$css_prefix}player_name")
                     ),
