@@ -356,7 +356,7 @@ class StringParser
     function parse($string)
     {
         if ( $string == "" )
-            return [];
+            return new MyString();
 
         $this->output = new MyString();
         $this->subject = $string;
