@@ -238,7 +238,7 @@ class UnvIcon implements StringObject
     {
         $url = htmlspecialchars(self::$image_prefix.$this->icon.self::$image_suffix, ENT_QUOTES);
         $alt = htmlspecialchars("$this->icon", ENT_QUOTES);
-        return "<img src='$url' alt='$alt' title='$alt'/>";
+        return "<img style='height: 1em' src='$url' alt='$alt' title='$alt'/>";
     }
 
 }
