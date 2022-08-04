@@ -27,6 +27,7 @@ class Protcol
     public $receive_len = 1024;
     public $default_port = 26000;
     public $scheme = null;
+    public $url_prefix = null;
     public $string;
 
     /**
@@ -89,6 +90,7 @@ class Daemon_Protocol extends Protcol
     public $receive_len = 32768;
     public $default_port = 27960;
     public $scheme = "unv";
+    public $url_prefix = "https://play.unvanquished.net/";
 
     function __construct()
     {
@@ -650,7 +652,9 @@ class Controller_Singleton
             $status = $this->status($address);
 
             $link = "$address";
-            if ( $address->protocol->scheme )
+            if ( $address->protocol->url_prefix )
+                $link = new HTML_Link("Connect", $address->protocol->url_prefix . "$address->host:$address->port");
+            elseif ( $address->protocol->scheme )
                 $link = new HTML_Link("Connect", $link);
 
             if ( isset($status["sv_statsURL"]) )
