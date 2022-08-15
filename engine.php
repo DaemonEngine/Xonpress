@@ -653,7 +653,7 @@ class Controller_Singleton
 
             $link = "$address";
             if ( $address->protocol->url_prefix )
-                $link = new HTML_Link("Connect", $address->protocol->url_prefix . "$address->host:$address->port");
+                $link = new HTML_Link("Connect", $address->protocol->url_prefix . "$address->host:$address->port", true, array("target" => "xonpress-game-server-load"));
             elseif ( $address->protocol->scheme )
                 $link = new HTML_Link("Connect", $link);
 
