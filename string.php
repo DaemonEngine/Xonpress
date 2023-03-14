@@ -329,7 +329,7 @@ class StringParser
             $i++;
             return true;
         }
-        if ( $this->subject[$i+1] == "x" && $i + 4 < strlen($this->subject) )
+        if ( strtolower($this->subject[$i+1]) == "x" && $i + 4 < strlen($this->subject) )
         {
             $this->push_color(new Color(
                 hexdec($this->subject[$i+2]) * 0x11,
