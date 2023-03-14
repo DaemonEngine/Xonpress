@@ -658,7 +658,7 @@ class Controller_Singleton
                 $link = new HTML_Link("Connect", $link);
 
             if ( isset($status["sv_statsURL"]) )
-                $link .= " " . new HTML_Link("Stats", $status["sv_statsURL"]);
+                $link .= " " . new HTML_Link("Stats", $status["sv_statsURL"], true, array("target" => "_blank"));
 
             $table->data_row(
                 [
