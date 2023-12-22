@@ -46,9 +46,9 @@ class Protcol
         return [];
     }
 
-    function default_master()
+    function default_masters()
     {
-        return null;
+        return [];
     }
 }
 
@@ -91,6 +91,10 @@ class Daemon_Protocol extends Protcol
     public $default_port = 27960;
     public $scheme = "unv";
     public $url_prefix = "https://play.unvanquished.net/";
+    private $masters = [
+        ["master.unvanquished.net", 27950],
+        ["master2.unvanquished.net", 27950],
+    ];
 
     function __construct()
     {
@@ -109,15 +113,26 @@ class Daemon_Protocol extends Protcol
         return $status_array;
     }
 
-    function default_master()
+    function default_masters()
     {
-        return new Engine_Address($this, "master.unvanquished.net", 27950);
+        $masters = [];
+        foreach( $this->masters as $master )
+        {
+            $masters[] = new Engine_Address($this, $master[0], $master[1]);
+        };
+        return $masters;
     }
 
     function server_list($address = null)
     {
         if ( $address == null )
-            $address = $this->default_master();
+        {
+            $masters = $this->default_master();
+            if ( !empty($masters) )
+            {
+                $address = $masters[0];
+            }
+        }
 
         $game = "UNVANQUISHED";
         $protocol = 86;
@@ -710,7 +725,19 @@ class Controller_Singleton
     {
         if ( is_string($protocol) )
             $protocol = Engine_Address::parse_scheme($protocol);
-        return $this->server_list($protocol->default_master());
+        $merged_list = [];
+        foreach( $protocol->default_masters() as $master_server )
+        {
+            $servers = $this->server_list($master_server);
+            foreach( $servers as $server )
+            {
+                 if ( !in_array($server, $merged_list) )
+                 {
+                     $merged_list[] = $server;
+                 }
+            }
+        }
+        return $merged_list;
     }
 }
 
