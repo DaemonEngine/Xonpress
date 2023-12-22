@@ -20,7 +20,7 @@
 require_once("table.php");
 require_once("string.php");
 
-class Protcol
+class Protocol
 {
     public $header = "\xff\xff\xff\xff";
     public $responses = array();
@@ -52,7 +52,7 @@ class Protcol
     }
 }
 
-class Darkplaces_Protocol extends Protcol
+class Darkplaces_Protocol extends Protocol
 {
     public $responses = array(
         "rcon" => "n",
@@ -78,7 +78,7 @@ class Darkplaces_Protocol extends Protcol
     }
 }
 
-class Daemon_Protocol extends Protcol
+class Daemon_Protocol extends Protocol
 {
     public $responses = array(
         "rcon" => "print\n",
