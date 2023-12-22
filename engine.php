@@ -643,7 +643,14 @@ class Controller_Singleton
             return "";
 
         $table = new HTML_Table("{$css_prefix}server_list");
-        $headers = ["Server", "Version", "Map", "Players", "Links"];
+        $headers = [
+                "Server",
+                // "Game",
+                "Version",
+                "Map",
+                "Players",
+                "Links"
+        ];
         $table->header_row($headers);
 
         foreach ( $addresses as $address )
@@ -663,6 +670,7 @@ class Controller_Singleton
             $table->data_row(
                 [
                     $address->protocol->string->to_html($status["server.name"]),
+                    // htmlspecialchars($status["server.game"]),
                     htmlspecialchars($status["server.version"]),
                     htmlspecialchars($status["mapname"]),
                     $this->player_number($status),
