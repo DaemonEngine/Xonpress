@@ -663,8 +663,8 @@ class Controller_Singleton
             $table->data_row(
                 [
                     $address->protocol->string->to_html($status["server.name"]),
-                    $status["server.version"],
-                    $status["mapname"],
+                    htmlspecialchars($status["server.version"]),
+                    htmlspecialchars($status["mapname"]),
                     $this->player_number($status),
                     $link
                 ],
