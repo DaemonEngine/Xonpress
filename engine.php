@@ -26,6 +26,7 @@ class Protocol
     public $responses = array();
     public $receive_len = 1024;
     public $default_port = 26000;
+    public $masters = [];
     public $scheme = null;
     public $url_prefix = null;
     public $string;
@@ -48,7 +49,12 @@ class Protocol
 
     function default_masters()
     {
-        return [];
+        $masters = [];
+        foreach( $this->masters as $master )
+        {
+            $masters[] = new Engine_Address($this, $master[0], $master[1]);
+        };
+        return $masters;
     }
 }
 
@@ -91,7 +97,7 @@ class Daemon_Protocol extends Protocol
     public $default_port = 27960;
     public $scheme = "unv";
     public $url_prefix = "https://play.unvanquished.net/";
-    private $masters = [
+    public $masters = [
         ["master.unvanquished.net", 27950],
         ["master2.unvanquished.net", 27950],
     ];
@@ -111,16 +117,6 @@ class Daemon_Protocol extends Protocol
             $status_array["server.version"] = $matches[2];
         }
         return $status_array;
-    }
-
-    function default_masters()
-    {
-        $masters = [];
-        foreach( $this->masters as $master )
-        {
-            $masters[] = new Engine_Address($this, $master[0], $master[1]);
-        };
-        return $masters;
     }
 
     function server_list($address = null)
