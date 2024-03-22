@@ -200,6 +200,7 @@ class UnvIcon implements StringObject
         "lasgun",
         "lcannon",
         "leech",
+        "mantis",
         "marauder",
         "mdriver",
         "medstat",
