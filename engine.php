@@ -232,9 +232,9 @@ class Daemon_Protocol extends Protocol
                     $high = sprintf('%02x', ord($nextbyte()));
                     $low = sprintf('%02x', ord($nextbyte()));
                     $ip[] = "$high$low";
-                    $port = ord($nextbyte()) << 8;
-                    $port |= ord($nextbyte());
                 }
+                $port = ord($nextbyte()) << 8;
+                $port |= ord($nextbyte());
                 $servers[] = new Engine_Address($this, "[".implode(":", $ip)."]", $port);
             }
         }
