@@ -234,8 +234,8 @@ class Daemon_Protocol extends Protocol
                     $ip[] = "$high$low";
                     $port = ord($nextbyte()) << 8;
                     $port |= ord($nextbyte());
-                    $servers[] = new Engine_Address($this, "[".implode(":", $ip)."]", $port);
                 }
+                $servers[] = new Engine_Address($this, "[".implode(":", $ip)."]", $port);
             }
         }
     }
