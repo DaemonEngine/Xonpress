@@ -697,9 +697,14 @@ class Controller_Singleton
             if ( isset($status["sv_statsURL"]) )
                 $link .= " " . new HTML_Link("Stats", $status["sv_statsURL"], true, array("target" => "_blank"));
 
+            $server_name = $address->protocol->string->to_html($status["server.name"]);
+
+            if ( str_starts_with( $address->host, "[" ) )
+                $server_name = $server_name . " <sup>[IPv6]</sup>";
+
             $table->data_row(
                 [
-                    $address->protocol->string->to_html($status["server.name"]),
+                    $server_name,
                     // htmlspecialchars($status["server.game"]),
                     htmlspecialchars($status["server.version"]),
                     htmlspecialchars($status["mapname"]),
