@@ -138,7 +138,7 @@ class Daemon_Protocol extends Protocol
         $request = "{$this->header}getserversExt $game $protocol $extra_flags";
 
         $socket = new EngineSocket();
-        $response = $socket->write($address, $request);
+        $socket->write($address, $request);
 
         $packet_index = 0;
         $packet_count = 1;
