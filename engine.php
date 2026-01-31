@@ -367,8 +367,10 @@ class EngineSocket
     {
         $host = trim($address->host, "[]");
         $received = "";
+        $from = '';
+        $port = 0;
         socket_recvfrom($this->socket(), $received, $read_size,
-            0, $host, $address->port);
+            0, $from, $port);
         return $received;
     }
 
