@@ -308,7 +308,8 @@ class EngineSocket
     {
         if ( $this->socket == null )
         {
-            $this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+            $this->socket = socket_create(AF_INET6, SOCK_DGRAM, SOL_UDP);
+            socket_set_option($this->socket, IPPROTO_IPV6, IPV6_V6ONLY, 0);
             $this->set_timeout(
                 EngineSocket::$default_write_timeout,
                 EngineSocket::$default_read_timeout
@@ -357,15 +358,17 @@ class EngineSocket
 
     function write($address, $data)
     {
+        $host = trim($address->host, "[]");
         socket_sendto($this->socket(), $data, strlen($data),
-            0, $address->host, $address->port);
+            0, $host, $address->port);
     }
 
     function read($address, $read_size)
     {
+        $host = trim($address->host, "[]");
         $received = "";
         socket_recvfrom($this->socket(), $received, $read_size,
-            0, $address->host, $address->port);
+            0, $host, $address->port);
         return $received;
     }
 
