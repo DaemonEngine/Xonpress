@@ -302,43 +302,58 @@ class EngineSocket
 {
     static $default_write_timeout =  1000; // 1 millisecond
     static $default_read_timeout = 500000; // 500 milliseconds
-    private $socket = null;
+    private $socket6 = null;
+    private $socket4 = null;
 
-    function socket()
+    function socket( $address )
     {
-        if ( $this->socket == null )
-        {
-            $this->socket = socket_create(AF_INET6, SOCK_DGRAM, SOL_UDP);
-            socket_set_option($this->socket, IPPROTO_IPV6, IPV6_V6ONLY, 0);
-            $this->set_timeout(
+	if ( str_starts_with( $address->host, "[" ) )
+	{
+	    if ( $this->socket6 == null )
+            {
+                $this->socket6 = socket_create(AF_INET6, SOCK_DGRAM, SOL_UDP);
+                $this->set_timeout($this->socket6,
                 EngineSocket::$default_write_timeout,
                 EngineSocket::$default_read_timeout
-            );
+                );
+            }
+            return $this->socket6;
+	}
+	else
+	{
+	    if ( $this->socket4 == null )
+            {
+                $this->socket4 = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+                $this->set_timeout($this->socket4,
+                EngineSocket::$default_write_timeout,
+                EngineSocket::$default_read_timeout
+                );
+            }
+            return $this->socket4;
         }
-        return $this->socket;
     }
 
-    function set_timeout($send_microseconds, $receive_microseconds = -1)
+    function set_timeout($socket, $send_microseconds, $receive_microseconds = -1)
     {
-        if ( !$this->socket )
+        if ( !$socket )
             return;
 
         if ( $receive_microseconds < 0 )
             $receive_microseconds = $send_microseconds;
 
         if ( $send_microseconds > 0 )
-            socket_set_option($this->socket, SOL_SOCKET, SO_SNDTIMEO,
+            socket_set_option($socket, SOL_SOCKET, SO_SNDTIMEO,
                 array('sec' => 0, 'usec' => $send_microseconds));
 
         if ( $receive_microseconds > 0 )
-            socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO,
+            socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO,
                 array('sec' => 0, 'usec' => $receive_microseconds));
 
     }
 
     function request(Engine_Address $address, $request)
     {
-        if ( !$this->socket() )
+        if ( !$this->socket($address) )
             return false;
 
         $request_command = strtok($request, " ");
@@ -359,17 +374,16 @@ class EngineSocket
     function write($address, $data)
     {
         $host = trim($address->host, "[]");
-        socket_sendto($this->socket(), $data, strlen($data),
+        socket_sendto($this->socket($address), $data, strlen($data),
             0, $host, $address->port);
     }
 
     function read($address, $read_size)
     {
-        $host = trim($address->host, "[]");
         $received = "";
         $from = '';
         $port = 0;
-        socket_recvfrom($this->socket(), $received, $read_size,
+        socket_recvfrom($this->socket($address), $received, $read_size,
             0, $from, $port);
         return $received;
     }
