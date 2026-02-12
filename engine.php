@@ -29,6 +29,11 @@ class Protocol
     public $masters = [];
     public $scheme = null;
     public $url_prefix = null;
+    /* game is a string used for querying the master server
+    like: getserversExt Xonotic 3 empty full
+    It is not an user interface string. */
+    public $game = null;
+    public $protocol_num = null;
     public $string;
 
     /**
@@ -58,33 +63,7 @@ class Protocol
     }
 }
 
-class Darkplaces_Protocol extends Protocol
-{
-    public $responses = array(
-        "rcon" => "n",
-        "srcon" => "n",
-        "getchallenge" => "challenge ",
-        "getinfo" => "infoResponse\n",
-        "getstatus" => "statusResponse\n",
-    );
-    public $receive_len = 1399;
-    public $default_port = 26000;
-
-    function __construct()
-    {
-        $this->string = new DarkplacesStringParser();
-    }
-
-    function normalize_status($status_array)
-    {
-        $status_array["server.name"] = $status_array["hostname"];
-        $status_array["server.game"] = $status_array["gamename"];
-        $status_array["server.version"] = $status_array["gameversion"];
-        return $status_array;
-    }
-}
-
-class Daemon_Protocol extends Protocol
+class Q3_Protocol extends Protocol
 {
     public $responses = array(
         "rcon" => "print\n",
@@ -95,16 +74,16 @@ class Daemon_Protocol extends Protocol
     );
     public $receive_len = 32768;
     public $default_port = 27960;
-    public $scheme = "unv";
-    public $url_prefix = "https://play.unvanquished.net/";
+    public $protocol_num = 68;
     public $masters = [
-        ["master.unvanquished.net", 27950],
-        ["master2.unvanquished.net", 27950],
+        ["master3.idsoftware.com", 27950],
+        ["master.quake3arena.com", 27950],
+        ["master.ioquake3.org", 27950],
     ];
 
     function __construct()
     {
-        $this->string = new DaemonStringParser();
+        $this->string = new Q3StringParser();
     }
 
     function normalize_status($status_array)
@@ -130,12 +109,17 @@ class Daemon_Protocol extends Protocol
             }
         }
 
-        $game = "UNVANQUISHED";
-        $protocol = 86;
         $extra_flags = "empty full";
         $read_size = 1024;
 
-        $request = "{$this->header}getserversExt $game $protocol $extra_flags";
+        if ( $game == null )
+        {
+            $request = "{$this->header}getserversExt $this->game $this->protocol_num $extra_flags";
+        }
+        else
+        {
+            $request = "{$this->header}getserversExt $this->protocol_num $extra_flags";
+        }
 
         $socket = new EngineSocket();
         $socket->write($address, $request);
@@ -241,6 +225,80 @@ class Daemon_Protocol extends Protocol
     }
 }
 
+class Darkplaces_Protocol extends Q3_Protocol
+{
+    public $responses = array(
+        "rcon" => "n",
+        "srcon" => "n",
+        "getchallenge" => "challenge ",
+        "getinfo" => "infoResponse\n",
+        "getstatus" => "statusResponse\n",
+    );
+    public $receive_len = 1399;
+    public $default_port = 26000;
+    public $protocol_num = 3;
+    public $masters = [
+        ["dpmaster.deathmask.net", 27950],
+        ["dpmaster.tchr.no", 27950],
+    ];
+
+    function __construct()
+    {
+        $this->string = new DarkplacesStringParser();
+    }
+
+    function normalize_status($status_array)
+    {
+        $status_array["server.name"] = $status_array["hostname"];
+        $status_array["server.game"] = $status_array["gamename"];
+        $status_array["server.version"] = $status_array["gameversion"];
+        return $status_array;
+    }
+}
+
+class Daemon_Protocol extends Q3_Protocol
+{
+    public $protocol_num = 86;
+
+    function __construct()
+    {
+        $this->string = new DaemonStringParser();
+    }
+}
+
+class Xonotic_Protocol extends Darkplaces_Protocol
+{
+    public $game = "Xonotic";
+}
+
+class Unvanquished_Protocol extends Daemon_Protocol
+{
+    // Unvanquished sets no $game query field.
+    public $scheme = "unv";
+    public $url_prefix = "https://play.unvanquished.net/";
+    public $masters = [
+        ["master.unvanquished.net", 27950],
+        ["master2.unvanquished.net", 27950],
+    ];
+
+    function __construct()
+    {
+        $this->string = new UnvanquishedStringParser();
+    }
+}
+
+class WoP_Protocol extends Q3_Protocol
+{
+    public $game = "WorldofPadman";
+	public $scheme = "worldofpadman";
+    public $url_prefix = "worldofpadman://connect/";
+    public $protocol_num = 71;
+    public $masters = [
+        ["master.worldofpadman.net", 27955],
+        ["master.worldofpadman.com", 27955],
+    ];
+}
+
 class Engine_Address
 {
     public $protocol;
@@ -277,7 +335,13 @@ class Engine_Address
     static function parse_scheme($name)
     {
         if ( $name == "unv" )
-            return new Daemon_Protocol();
+            return new Unvanquished_Protocol();
+        if ( $name == "worldofpadman" )
+            return new WoP_Protocol();
+        /* This $scheme doesn't exit, but the current implementation requires
+        one for the [xon_master_list master_protocol="xonotic"] syntax. */
+        if ( $name == "xonotic" )
+            return new Xonotic_Protocol();
         return new Darkplaces_Protocol();
     }
 
