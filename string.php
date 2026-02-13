@@ -283,6 +283,30 @@ class StringParser
     protected $subject;
     protected $output;
 
+    static public $color_table_is_float = false;
+    static public $color_table = [];
+
+    public function indexed_color($table_index)
+    {
+        if ( static::$color_table_is_float )
+        {
+            $float_color = static::$color_table[$table_index];
+            return new Color(
+                (int)($float_color[0] * 255),
+                (int)($float_color[1] * 255),
+                (int)($float_color[2] * 255),
+            );
+        }
+        else
+        {
+            $color = static::$color_table[$table_index];
+            return new Color(
+                $color[0],
+                $color[1],
+                $color[2],
+            );
+        }
+    }
 
     function __construct(Color $default_color = null)
     {
@@ -324,28 +348,6 @@ class StringParser
 
     protected function lex_caret(&$i)
     {
-        if ( $i + 1 >= strlen($this->subject) )
-        {
-            $this->append_string("^");
-            $i++;
-            return true;
-        }
-        if ( strtolower($this->subject[$i+1]) == "x" && $i + 4 < strlen($this->subject) )
-        {
-            $this->push_color(new Color(
-                hexdec($this->subject[$i+2]) * 0x11,
-                hexdec($this->subject[$i+3]) * 0x11,
-                hexdec($this->subject[$i+4]) * 0x11
-            ));
-            $i += 5;
-            return true;
-        }
-        if ( $this->subject[$i+1] == "^" )
-        {
-            $this->append_string("^");
-            $i += 2;
-            return true;
-        }
         return false;
     }
 
@@ -390,7 +392,66 @@ class StringParser
     }
 }
 
-class DaemonStringParser extends StringParser
+class Q3StringParser extends StringParser
+{
+    static public $color_table = [
+        '0' => [  0,   0,   0],
+        '1' => [255,   0,   0],
+        '2' => [  0, 255,   0],
+        '3' => [255, 255,   0],
+        '4' => [  0,   0, 255],
+        '5' => [  0, 255, 255],
+        '6' => [255,   0, 255],
+        '7' => [255, 255, 255],
+        '8' => [136, 136, 136],
+        '9' => [204, 204, 204],
+    ];
+
+    protected function lex_caret(&$i)
+    {
+        $index = strtoupper($this->subject[$i+1]);
+        if ( isset(static::$color_table[$index]) )
+        {
+            $this->push_color($this->indexed_color($index));
+            $i += 2;
+            return true;
+        }
+        if ( $i + 1 >= strlen($this->subject) )
+        {
+            $this->append_string("^");
+            $i++;
+            return true;
+        }
+        if ( $this->subject[$i+1] == "^" )
+        {
+            $this->append_string("^");
+            $i += 2;
+            return true;
+        }
+        return false;
+    }
+}
+
+class RGBStringParser extends Q3StringParser
+{
+    protected function lex_caret(&$i)
+    {
+        if ( parent::lex_caret($i) )
+            return true;
+        if ( strtolower($this->subject[$i+1]) == "x" && $i + 4 < strlen($this->subject) )
+        {
+            $this->push_color(new Color(
+                hexdec($this->subject[$i+2]) * 0x11,
+                hexdec($this->subject[$i+3]) * 0x11,
+                hexdec($this->subject[$i+4]) * 0x11
+            ));
+            $i += 5;
+            return true;
+        }
+    }
+}
+
+class DaemonStringParser extends RGBStringParser
 {
     # Taken from Color.cpp, replacing
     # \s+\{ ([0-9.]+)f, ([0-9.]+)f, ([0-9.]+)f, 1.00f \}, // (.).*
@@ -431,15 +492,7 @@ class DaemonStringParser extends StringParser
         'O' => [1.00, 1.00, 0.50],
     ];
 
-    private function indexed_color($table_index)
-    {
-        $float_color = self::$color_table[$table_index];
-        return new Color(
-            (int)($float_color[0] * 255),
-            (int)($float_color[1] * 255),
-            (int)($float_color[2] * 255)
-        );
-    }
+    static public $color_table_is_float = true;
 
     protected function lex_caret(&$i)
     {
@@ -463,16 +516,11 @@ class DaemonStringParser extends StringParser
             $i += 8;
             return true;
         }
-
-        $index = strtoupper($this->subject[$i+1]);
-        if ( isset(self::$color_table[$index]) )
-        {
-            $this->push_color($this->indexed_color($index));
-            $i += 2;
-            return true;
-        }
     }
+}
 
+class UnvanquishedStringParser extends DaemonStringParser
+{
     protected function lex_char(&$i)
     {
         if ( $this->subject[$i] != "[" )
@@ -492,43 +540,11 @@ class DaemonStringParser extends StringParser
 
         return false;
     }
-
 }
 
-class DarkplacesStringParser extends StringParser
+class DarkplacesStringParser extends RGBStringParser
 {
     static public $convert_qfont = true;
-
-    protected function indexed_color($index)
-    {
-        switch ( (int)$index )
-        {
-            case 0: return new Color(  0,  0,  0);
-            case 1: return new Color(255,  0,  0);
-            case 2: return new Color(  0,255,  0);
-            case 3: return new Color(255,255,  0);
-            case 4: return new Color(  0,  0,255);
-            case 5: return new Color(  0,255,255);
-            case 6: return new Color(255,  0,255);
-            case 7: return new Color(255,255,255);
-            case 8: return new Color(136,136,136);
-            case 9: return new Color(204,204,204);
-        }
-        return null;
-    }
-
-    protected function lex_caret(&$i)
-    {
-        if ( parent::lex_caret($i) )
-            return true;
-
-        if ( is_numeric($this->subject[$i+1]) )
-        {
-            $this->push_color($this->indexed_color($this->subject[$i+1]));
-            $i += 2;
-            return true;
-        }
-    }
 
     protected function lex_char(&$i)
     {
